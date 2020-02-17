@@ -1,0 +1,6 @@
+port: _env:HS_PORT:8080
+db: 
+  user: _env:DB_USER:postgres
+  host: _env:DB_HOST:localhost
+  port: _env:DB_PORT:5432
+  db-name: _env:DB_NAME:hs_forum

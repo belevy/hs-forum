@@ -1,0 +1,5 @@
+.stack-work/
+hs-forum.cabal
+*~
+*.sw*
+config.yaml
