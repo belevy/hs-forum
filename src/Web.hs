@@ -1,34 +1,24 @@
 module Web where
 
 import Control.Monad (Monad)
+import Control.Monad.IO.Class (liftIO)
 import Servant
 import qualified Network.Wai.Handler.Warp as Warp
 import Data.UserCredentials (UserCredentials)
 import qualified Data.UserCredentials as UserCredentials
-import Control.Monad.Reader
-import Control.Monad.Except
-import Database.Persist.Postgresql
-import Data.Pool (Pool)
-import Database.Persist.Sql (SqlBackend)
-import Control.Monad.Logger (runNoLoggingT)
 import Data.UserCredentials
 import DB.User
 import qualified Config
-import Data.String
+import Env
+import Web.AppHandler
+import Database.Persist.Postgresql
 
 type Api = "session" :> ReqBody '[JSON] UserCredentials :> Post '[JSON] ()
 
-type Env = Pool SqlBackend
-
-newtype AppHandler a = AppHandler 
-  { unAppHandler :: ReaderT Env Handler a
-  } deriving newtype (Functor, Applicative, Monad, MonadIO, MonadReader Env)
-
-server :: ServerT Api AppHandler
+server :: AppServer Api 
 server = \userCredentials -> do
   liftIO $ print userCredentials
-  pool <- ask
-  liftIO $ flip runSqlPool pool $ do
+  runDB $ do
     user <- fetchAndVerifyUser userCredentials 
     liftIO $ print user
     pure ()
@@ -36,13 +26,14 @@ server = \userCredentials -> do
 api :: Proxy Api
 api = Proxy
 
-app :: Env -> Application
-app pool = serve api (hoistServer api (flip runReaderT pool . unAppHandler) server)
+mkApp :: Config.Config -> IO Application
+mkApp config = 
+  withEnv config $ \env -> 
+  pure $ serve api $ hoistServer api (runAppHandler env) server
 
 runApp :: IO ()
 runApp = do
-  config <- Config.loadConfigFile
-  runNoLoggingT $ 
-    withPostgresqlPool (Config.dbConnectionString config) 1 $ \pool -> do
-    liftIO $ putStrLn $ "Running on " <> (show $ Config.configPort config)
-    liftIO $ Warp.run (Config.configPort config) (app pool)
+    config <- Config.loadConfigFile
+    app <- mkApp config
+    putStrLn $ "Running on " <> (show $ Config.configPort config)
+    Warp.run (Config.configPort config) app 

@@ -39,6 +39,7 @@ dependencies:
 - text
 - time
 - transformers
+- unliftio
 - warp
 - yaml
 
