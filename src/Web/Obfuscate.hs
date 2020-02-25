@@ -104,30 +104,28 @@ obfuscatedMethodRouter hashidsContext splitHeaders method proxy status action = 
                       in Route $ responseLBS status ((hContentType, cs contentT) : headers) bdy
 
 encodeIdFields :: ToJSON a => H.HashidsContext -> a -> Value
-encodeIdFields ctx = go 0 . toJSON
+encodeIdFields ctx = go . toJSON
   where
-  go i (Object oMap) = Object $ flip mapWithKey oMap $ \fieldName fieldValue -> 
+  go (Object oMap) = Object $ flip mapWithKey oMap $ \fieldName fieldValue -> 
       case fieldValue of
         v@(Object _) -> 
-          go (i+1) v
+          go v
         v@(Array a) -> 
           if "ids" `T.isSuffixOf` fieldName then 
-            go (i+1) v
+            go v
           else 
             v
         v@(Number n) -> 
           if "id" `T.isSuffixOf` fieldName then 
-            go (i+1) v
+            go v
           else 
             v
         v -> v
 
-  go i val@(Array a) 
-    | i == 0 = val
-    | otherwise = Array $ fmap (go i) a
+  go val@(Array a) 
+    | otherwise = Array $ fmap go a
 
-  go i val@(Number n) 
-    | i == 0 = val
+  go val@(Number n) 
     | not $ isInteger n = val
     | otherwise = res
     where
@@ -137,5 +135,5 @@ encodeIdFields ctx = go 0 . toJSON
           let encoded = H.encode ctx [i]
           pure $ String $ T.pack encoded
 
-  go _ val = val
+  go val = val
 

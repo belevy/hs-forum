@@ -27,7 +27,7 @@ type Api = "session" :> ObfuscatedCapture "userId" UserId :> Post '[JSON] ()
         :<|>  "test" :> ObfuscatedVerb GET 200 '[JSON] TestJSON
 
 server :: AppServer Api 
-server = session :<|> test
+server = session :<|> test 
   where
   session userId = do
     liftIO $ print userId
@@ -50,7 +50,6 @@ mkApp config =
       context = hashidsCtx :. EmptyContext
       contextProxy = Proxy @'[HashidsContext]
   in do 
-    liftIO $ print $ encode hashidsCtx [1]
     pure $ serveWithContext api context
           $ hoistServerWithContext api contextProxy (runAppHandler env) server
            
