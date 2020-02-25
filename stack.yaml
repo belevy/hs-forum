@@ -42,6 +42,8 @@ packages:
 extra-deps: 
 - git: https://github.com/belevy/esqueleto.git
   commit: 6ad46d9b1d6db85a2e3ac7a1996aaa544f8be87b
+- git: https://github.com/belevy/hashids-st.git
+  commit: be5d44fdd26187ddbeb285b9ab81d4a4b63ebafa
 - persistent-2.10.5.1
 - persistent-postgresql-2.10.1.2
 - persistent-template-2.8.2.3

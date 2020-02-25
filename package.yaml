@@ -25,7 +25,9 @@ dependencies:
 - bcrypt
 - bytestring
 - esqueleto
+- hashids-st
 - hedis
+- http-api-data
 - monad-logger
 - mtl
 - persistent
@@ -36,6 +38,7 @@ dependencies:
 - resource-pool
 - servant
 - servant-server
+- string-conversions
 - text
 - time
 - transformers
@@ -53,6 +56,7 @@ default-extensions:
 - MultiParamTypeClasses
 - OverloadedStrings
 - Rank2Types
+- ScopedTypeVariables
 - StandaloneDeriving
 - TypeApplications
 - TypeFamilies
