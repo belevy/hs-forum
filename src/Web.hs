@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Web where
 
 import Control.Monad (Monad)
@@ -15,15 +17,28 @@ import Env
 import Web.AppHandler
 import Database.Persist.Postgresql
 import Web.Obfuscate
+import qualified Data.Text as T
+import Data.Aeson (defaultOptions, camelTo2, fieldLabelModifier)
+import Data.Aeson.TH
 import Hashids
 
+
 type Api = "session" :> ObfuscatedCapture "userId" UserId :> Post '[JSON] ()
+        :<|>  "test" :> ObfuscatedVerb GET 200 '[JSON] TestJSON
 
 server :: AppServer Api 
-server = \userId -> do
-  liftIO $ print userId
-  runDB $ do
-    pure ()
+server = session :<|> test
+  where
+  session userId = do
+    liftIO $ print userId
+    runDB $ do
+      pure ()
+
+  test = 
+    pure $ TestJSON
+      { _testId = toSqlKey 1
+      , _testManyIds = fmap toSqlKey [1,2,3,4,5]
+      }
 
 api :: Proxy Api
 api = Proxy
@@ -45,3 +60,10 @@ runApp = do
     app <- mkApp config
     putStrLn $ "Running on " <> (show $ Config.configPort config)
     Warp.run (Config.configPort config) app 
+
+data TestJSON = TestJSON
+  { _testId :: UserId
+  , _testManyIds :: [UserId]
+  }
+
+$(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "_test")} 'TestJSON)

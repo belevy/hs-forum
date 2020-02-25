@@ -28,6 +28,7 @@ dependencies:
 - hashids-st
 - hedis
 - http-api-data
+- http-types
 - monad-logger
 - mtl
 - persistent
@@ -36,6 +37,7 @@ dependencies:
 - pureMD5
 - random
 - resource-pool
+- scientific
 - servant
 - servant-server
 - string-conversions
@@ -43,6 +45,8 @@ dependencies:
 - time
 - transformers
 - unliftio
+- unordered-containers
+- wai
 - warp
 - yaml
 
