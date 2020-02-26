@@ -2,8 +2,6 @@
 
 module Web.Obfuscate where
 
-import System.IO.Unsafe
-
 import Data.Kind
 import Text.Read (readMaybe)
 import Data.Typeable (Typeable)
@@ -12,6 +10,7 @@ import qualified Data.Text as T
 import Data.String.Conversions (cs)
 import qualified Data.Maybe as Maybe
 import Data.Int (Int64)
+import Control.Monad.IO.Class (liftIO)
 
 import qualified Hashids as H
 import Web.HttpApiData
@@ -19,11 +18,12 @@ import Servant
 import Servant.Server.Internal
 import Servant.API.ContentTypes
 import Network.HTTP.Types (hContentType, hAccept, Method, Status, HeaderName)
-import Network.Wai (responseLBS, requestHeaders)
+import Network.Wai (lazyRequestBody,responseLBS, requestHeaders)
 import Database.Persist
 import Database.Persist.Sql
-import Data.Aeson (Value(..), ToJSON(..))
+import Data.Aeson (fromJSON, Result(..), Value(..), ToJSON(..), FromJSON(..))
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 import Data.Scientific (isInteger, toBoundedInteger)
 import Data.HashMap.Strict (mapWithKey)
 
@@ -69,6 +69,44 @@ instance (HasContextEntry context H.HashidsContext, KnownSymbol capture, HasServ
                   ([], Just v') -> return (toSqlKey $ fromIntegral v')
             )
 
+data ObfuscatedReqBody (contentType :: [Type]) (a :: Type)
+  deriving (Typeable)
+
+instance (ctypes ~ '[JSON], FromJSON a, HasContextEntry context H.HashidsContext, HasServer api context) 
+       => HasServer (ObfuscatedReqBody ctypes a :> api) context where
+  type ServerT (ObfuscatedReqBody ctypes a :> api) m = a -> ServerT api m
+
+  hoistServerWithContext _ pc nt s = hoistServerWithContext (Proxy :: Proxy api) pc nt . s
+
+  route Proxy context subserver
+      = route (Proxy :: Proxy api) context $
+          addBodyCheck subserver ctCheck bodyCheck
+    where
+      -- Content-Type check, we only lookup we can try to parse the request body
+      ctCheck = withRequest $ \ request -> do
+        -- See HTTP RFC 2616, section 7.2.1
+        -- http://www.w3.org/Protocols/rfc2616/rfc2616-sec7.html#sec7.2.1
+        -- See also "W3C Internet Media Type registration, consistency of use"
+        -- http://www.w3.org/2001/tag/2002/0129-mime
+        let contentTypeH = Maybe.fromMaybe "application/octet-stream"
+                         $ lookup hContentType $ requestHeaders request
+        case canHandleCTypeH (Proxy :: Proxy '[JSON]) (cs contentTypeH) :: Maybe (BL.ByteString -> Either String Value) of
+          Nothing -> delayedFail err415
+          Just f  -> return f
+
+      -- Body check, we get a body parsing functions as the first argument.
+      bodyCheck f = withRequest $ \ request -> do
+        mrqbody <- f <$> liftIO (lazyRequestBody request)
+        case decodeIdFields (getContextEntry context) <$> mrqbody of
+            Left e            -> delayedFailFatal err400 { errBody = cs e }
+            Right (Error e)   -> delayedFailFatal err400 { errBody = cs e }
+            Right (Success v) -> return v
+
+type ObfuscatedGet   = ObfuscatedVerb GET   200
+type ObfuscatedPost  = ObfuscatedVerb POST  200
+type ObfuscatedPut   = ObfuscatedVerb PUT   200
+type ObfuscatedPatch = ObfuscatedVerb PATCH 200
+
 data ObfuscatedVerb (method :: StdMethod) (status :: Nat) (ctypes :: [Type]) (a :: Type)
   deriving (Typeable)
 
@@ -103,6 +141,35 @@ obfuscatedMethodRouter hashidsContext splitHeaders method proxy status action = 
                       let bdy = if allowedMethodHead method request then "" else body
                       in Route $ responseLBS status ((hContentType, cs contentT) : headers) bdy
 
+
+decodeIdFields :: FromJSON a => H.HashidsContext -> Value -> Result a
+decodeIdFields ctx = fromJSON . go
+  where
+  go (Object oMap) = Object $ flip mapWithKey oMap $ \fieldName fieldValue -> 
+      case fieldValue of
+        v@(Object _) -> 
+          go v
+        v@(Array a) -> 
+          if "ids" `T.isSuffixOf` fieldName then 
+            go v
+          else 
+            v
+        v@(String s) -> 
+          if "id" `T.isSuffixOf` fieldName then 
+            go v
+          else 
+            v
+        v -> v
+
+  go val@(Array a) = Array $ fmap go a
+
+  go val@(String s) =
+    Maybe.fromMaybe val $ do 
+      i <- Maybe.listToMaybe $ H.decode ctx (cs s)
+      pure $ toJSON i
+
+  go val = val
+
 encodeIdFields :: ToJSON a => H.HashidsContext -> a -> Value
 encodeIdFields ctx = go . toJSON
   where
@@ -122,8 +189,7 @@ encodeIdFields ctx = go . toJSON
             v
         v -> v
 
-  go val@(Array a) 
-    | otherwise = Array $ fmap go a
+  go val@(Array a) = Array $ fmap go a
 
   go val@(Number n) 
     | not $ isInteger n = val
@@ -133,7 +199,7 @@ encodeIdFields ctx = go . toJSON
         Maybe.fromMaybe val $ do 
           i <- toInteger <$> toBoundedInteger @Int64 n
           let encoded = H.encode ctx [i]
-          pure $ String $ T.pack encoded
+          pure $ String $ cs encoded
 
   go val = val
 

@@ -24,21 +24,15 @@ import Hashids
 
 
 type Api = "session" :> ObfuscatedCapture "userId" UserId :> Post '[JSON] ()
-        :<|>  "test" :> ObfuscatedVerb GET 200 '[JSON] TestJSON
+        :<|>  "test" :> ObfuscatedReqBody '[JSON] TestJSON :> ObfuscatedPost '[JSON] TestJSON
 
 server :: AppServer Api 
-server = session :<|> test 
+server = session :<|> pure
   where
   session userId = do
     liftIO $ print userId
     runDB $ do
       pure ()
-
-  test = 
-    pure $ TestJSON
-      { _testId = toSqlKey 1
-      , _testManyIds = fmap toSqlKey [1,2,3,4,5]
-      }
 
 api :: Proxy Api
 api = Proxy
