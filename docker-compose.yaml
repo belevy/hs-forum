@@ -1,0 +1,42 @@
+version: "3.7"
+services:
+  redis:
+    image: redis:alpine
+    networks:
+      - internal
+    ports:
+      - "6379"
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  db:
+    image: postgres:12-alpine
+    networks:
+      - internal
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: password
+
+  backend:
+    build:
+      context: '.'
+      dockerfile: Dockerfile-backend
+    volumes:
+      - .:/var/hs-forum/
+      - stack-data:/root/.stack
+    networks:
+      - internal
+    ports: 
+      - "3000:8080"
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  pg-data:
+  stack-data:
+
+networks:
+  internal:

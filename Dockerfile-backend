@@ -1,0 +1,10 @@
+FROM fpco/stack-build:lts-14.27 as ghcid
+RUN stack install ghcid --resolver=lts-14.27
+
+FROM fpco/stack-build:lts-14.27
+RUN mkdir -p /var/hs-forum
+VOLUME /root/.stack
+VOLUME /var/hs-forum
+COPY --from=ghcid /root/.local/bin/ghcid /root/.local/bin/ghcid
+WORKDIR /var/hs-forum
+CMD ghcid --command="stack ghci --allow-different-user" --run="Web.runApp"
