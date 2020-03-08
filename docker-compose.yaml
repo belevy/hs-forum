@@ -34,6 +34,18 @@ services:
       - db
       - redis
 
+  frontend:
+    image: nginx:alpine
+    networks:
+      - internal
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./webroot/:/usr/share/nginx/html/:ro
+    environment:
+      - NGINX_HOST=localhost
+
 volumes:
   pg-data:
   stack-data:
