@@ -2,8 +2,8 @@
 
 module Web where
 
-import Control.Monad (Monad)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad 
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Servant
 import Servant.Server
 import qualified Network.Wai.Handler.Warp as Warp
@@ -21,17 +21,17 @@ import qualified Data.Text as T
 import Data.Aeson (defaultOptions, camelTo2, fieldLabelModifier)
 import Data.Aeson.TH
 import Hashids
-
+import System.Entropy (getEntropy)
+import qualified Web.Endpoint.Forum as Forum
 
 type Api = "session" :> ObfuscatedCapture "userId" UserId :> Post '[JSON] ()
-        :<|>  "test" :> ObfuscatedReqBody '[JSON] TestJSON :> ObfuscatedPost '[JSON] TestJSON
+     :<|> Forum.Api
 
 server :: AppServer Api 
-server = session :<|> pure
+server = session :<|> Forum.server
   where
   session userId = do
-    liftIO $ print userId
-    runDB $ do
+    runDB $
       pure ()
 
 api :: Proxy Api

@@ -17,7 +17,7 @@ import DB.Model.Session (Session, SessionKey)
 import DB.User
 import qualified DB.Model.Session as Session
 import Database.Redis as Redis
-import System.Random
+import Data.Cookie
 
 fetchSession :: MonadIO m => Redis.Connection -> SessionKey -> m (Maybe User)
 fetchSession conn sessionKey = do
@@ -26,8 +26,7 @@ fetchSession conn sessionKey = do
 
 createSession :: MonadIO m => Redis.Connection -> User -> Integer -> m SessionKey
 createSession conn user expiration = liftIO $ do
-  g <- getStdGen
-  let sessionKey = toMd5ByteString $ take 13 $ randoms g
+  sessionKey <- generateRandomToken
   runRedis conn $ Redis.setex sessionKey expiration (Session.encode user)
   pure sessionKey
   where

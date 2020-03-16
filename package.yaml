@@ -24,6 +24,9 @@ dependencies:
 - aeson
 - bcrypt
 - bytestring
+- base64-bytestring
+- cookie
+- entropy
 - esqueleto
 - hashids-st
 - hedis

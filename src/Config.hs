@@ -11,6 +11,7 @@ import Data.String
 data Config = Config 
   { configDb :: DatabaseConfig
   , configPort :: Int
+  , configHashidsSalt :: String
   } deriving Show
 
 data DatabaseConfig = DatabaseConfig

@@ -14,7 +14,7 @@ import DB.Model.ForumPost
 share [mkPersist sqlSettings] [persistLowerCase|
   Vote sql=votes
     voterId UserId
-    forumPostId ForumPostId
+    postId ForumPostId
     value Int 
     createdAt UTCTime
     deletedAt UTCTime Maybe

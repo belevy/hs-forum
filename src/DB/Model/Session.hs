@@ -5,8 +5,9 @@ import Data.ByteString
 import Text.Read
 import DB.Model.User 
 import qualified Data.ByteString.Char8 as C8
+import Data.Cookie
 
-type SessionKey = ByteString
+type SessionKey = Token
 type Session = User
 
 encode :: Session -> ByteString

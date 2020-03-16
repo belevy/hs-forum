@@ -39,6 +39,7 @@ CREATE INDEX user_role_role_idx ON user_roles(role_type);
 CREATE TABLE forum_posts (
   id BIGSERIAL PRIMARY KEY,
   forum_id BIGINT NOT NULL REFERENCES forums(id),
+  author_id BIGINT NOT NULL REFERENCE users(id),
   content TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMP,

@@ -14,6 +14,8 @@ services:
     image: postgres:12-alpine
     networks:
       - internal
+    ports:
+      - "5432:5432"
     volumes:
       - pg-data:/var/lib/postgresql/data
     environment:
@@ -33,6 +35,9 @@ services:
     depends_on:
       - db
       - redis
+    environment:
+      - DB_HOST=db
+      - DB_PASSWORD=password
 
   frontend:
     image: nginx:alpine
