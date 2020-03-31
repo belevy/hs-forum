@@ -6,20 +6,6 @@
 packages:
 - completed:
     cabal-file:
-      size: 5440
-      sha256: 2d2213dcac2dfc1c5eb0bcfcf691d3bf0eaa90ee96c101688b52a5d9a7f846e8
-    name: esqueleto
-    version: 3.3.1.1
-    git: https://github.com/belevy/esqueleto.git
-    pantry-tree:
-      size: 4335
-      sha256: 80c76be6d495db1b4ceb21497d1d96e668e93c6d3bcd6dfdd25b548f3813b89f
-    commit: 6ad46d9b1d6db85a2e3ac7a1996aaa544f8be87b
-  original:
-    git: https://github.com/belevy/esqueleto.git
-    commit: 6ad46d9b1d6db85a2e3ac7a1996aaa544f8be87b
-- completed:
-    cabal-file:
       size: 1312
       sha256: 0eab82e5e8d546cb2f7cf0046174630acbb2319e7144324e432f5528a58b415b
     name: hashids-st
@@ -32,6 +18,13 @@ packages:
   original:
     git: https://github.com/belevy/hashids-st.git
     commit: be5d44fdd26187ddbeb285b9ab81d4a4b63ebafa
+- completed:
+    hackage: esqueleto-3.3.3.0@sha256:0b9b63f92138310e7d7157bbac2560682082c2d78e1e10aedf6b53738b538d46,5440
+    pantry-tree:
+      size: 1542
+      sha256: 2981e18d50a5163b3b010e529afcc1d3a1316e1dbf28b3424c06a2cd8cbd1edd
+  original:
+    hackage: esqueleto-3.3.3.0
 - completed:
     hackage: persistent-2.10.5.1@sha256:878a69d07888af8889195dca35b66b03d1f6fdb933f0af1107a9760541672d55,4740
     pantry-tree:
