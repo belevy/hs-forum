@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Web.Endpoint.Forum 
+module Web.Endpoint.Forum
   ( Api
   , api
   , server
@@ -14,6 +14,7 @@ import qualified Data.Text as T
 import Data.Time.Clock (UTCTime)
 import UnliftIO (liftIO, throwIO)
 import qualified Data.Maybe as Maybe
+import Data.Int
 
 import Web.Obfuscate
 import Web.AppHandler
@@ -27,10 +28,10 @@ import DB.Model.ForumPost
 import DB.Model.User
 
 type Api = "forums" :> ObfuscatedCapture "forumId" ForumId :> ObfuscatedGet '[JSON] ForumResponse
-      :<|> "forums" :> ObfuscatedCapture "forumId" ForumId 
-                    :> "posts" 
-                    :> QueryParam "page" Int
-                    :> QueryParam "pageSize" Int
+      :<|> "forums" :> ObfuscatedCapture "forumId" ForumId
+                    :> "posts"
+                    :> QueryParam "page" Int64
+                    :> QueryParam "pageSize" Int64
                     :> ObfuscatedGet '[JSON] (PaginatedResponse ForumPostResponse)
 
 data ForumResponse = ForumResponse
@@ -54,14 +55,14 @@ data ForumPostResponse = ForumPostResponse
   }
 
 data PaginatedResponse a = PaginatedResponse
-  { paginatedTotalCount :: Int
-  , paginatedCurrentPage :: Int
-  , paginatedPageSize :: Int
+  { paginatedTotalCount :: Int64
+  , paginatedCurrentPage :: Int64
+  , paginatedPageSize :: Int64
   , paginatedData :: [a]
   }
 
 api :: Proxy Api
-api = Proxy 
+api = Proxy
 
 server :: AppServer Api
 server = getForum  :<|> getForumPosts
@@ -79,17 +80,17 @@ server = getForum  :<|> getForumPosts
         , frAdministrators = fmap userToForumAdministrator admins
         }
 
-    getForumPosts :: ForumId 
-                  -> Maybe Int 
-                  -> Maybe Int 
+    getForumPosts :: ForumId
+                  -> Maybe Int64
+                  -> Maybe Int64
                   -> AppHandler (PaginatedResponse ForumPostResponse)
     getForumPosts forumId mPage mPageSize = do
       (totalPosts, currentPosts) <- runDB $ getTopPosts forumId page pageSize
       pure $ PaginatedResponse
-        { paginatedTotalCount = fromIntegral totalPosts
+        { paginatedTotalCount = totalPosts
         , paginatedCurrentPage = page
         , paginatedPageSize = pageSize
-        , paginatedData = [] 
+        , paginatedData = []
         }
 
       where
@@ -98,7 +99,7 @@ server = getForum  :<|> getForumPosts
 
 userToForumAdministrator :: Entity User -> ForumAdministrator
 userToForumAdministrator (Entity userId user) =
-  ForumAdministrator 
+  ForumAdministrator
     { faUserId = userId
     , faUserName = userUserName user
     }
