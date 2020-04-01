@@ -1,6 +1,7 @@
 module DB.Forum
   where
 
+import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.Maybe as Maybe
 import Data.Int
@@ -16,17 +17,20 @@ import DB.Model.RoleType
 import DB.Model.Vote
 import DB.QueryCombinators
 
-getForumById :: MonadIO m => ForumId -> SqlPersistT m (Maybe (Entity Forum, Entity User, [Entity User]))
-getForumById forumId = do
-  mForum <- fmap Maybe.listToMaybe $ select $ do
-    (forums :& users) <-
-      from $ Table @Forum
-      `InnerJoin` Table @User
-      `on` (\(forums :& users) ->
-            forums ^. ForumCreator ==. users ^. UserId)
-    where_ $ forums ^. ForumId ==. val forumId
-    pure (forums, users)
-  admins <- select $ do
+type ForumResult = (Entity Forum, Entity User, [Entity User])
+
+getAllForums :: MonadIO m => Int64 -> Int64 -> SqlPersistT m (Value Int64, [ForumResult])
+getAllForums pageSize page = do
+  totalCount <- select $ rowCount allForums
+  forums <- select $ paginated pageSize page allForums
+  forumsWithAdmins <- forM forums $ \(forum, creator) -> do
+    admins <- getForumAdmins (entityKey forum)
+    pure (forum, creator, admins)
+  pure (head totalCount, forumsWithAdmins)
+
+getForumAdmins :: MonadIO m => ForumId -> SqlPersistT m [Entity User]
+getForumAdmins forumId =
+  select $ do
     (users :& roles) <-
       from $ Table @User
       `InnerJoin` Table @UserRole
@@ -36,30 +40,49 @@ getForumById forumId = do
         &&. roles ^. UserRoleForumId ==. val forumId
     pure users
 
+getForumById :: MonadIO m => ForumId -> SqlPersistT m (Maybe ForumResult)
+getForumById forumId = do
+  mForum <- fmap Maybe.listToMaybe $ select $ do
+    (forums, users) <- allForums
+    where_ $ forums ^. ForumId ==. val forumId
+    pure (forums, users)
+  admins <- getForumAdmins forumId
   pure $ mForum >>= (\(forum,creator) -> pure (forum, creator, admins))
 
-getTopPosts :: MonadIO m => ForumId -> Int64 -> Int64 -> SqlPersistT m (Int64, [(Entity ForumPost, Entity User, Value Int)])
-getTopPosts forumId page pageSize = do
+getTopPostsInForum :: MonadIO m => ForumId -> Int64 -> Int64 -> SqlPersistT m (Value Int64, [(Entity ForumPost, Entity User, Value Int)])
+getTopPostsInForum forumId pageSize page = do
   totalCount <- select . rowCount . from $ SelectQuery forumPosts
   paginatedResults <- select $ paginated pageSize page $ forumPosts
-  pure (unValue $ head totalCount, paginatedResults)
+  pure (head totalCount, paginatedResults)
     where
       forumPosts = do
-        res@(post, _, _) <- topPostsQuery
+        res@(_, post, u, v) <- topPostsQuery
         where_ $ post ^. ForumPostForumId ==. val forumId
-        pure res
+        pure (post, u, v)
 
-topPostsQuery :: SqlQuery (SqlExpr (Entity ForumPost), SqlExpr (Entity User), SqlExpr (Value Int))
-topPostsQuery = do
-  (posts :& users :& votes) <-
-    from $ Table @ForumPost
+allForums :: SqlQuery (SqlExpr (Entity Forum), SqlExpr (Entity User))
+allForums = do
+  (forums :& users) <-
+    from $ Table @Forum
     `InnerJoin` Table @User
-    `on` (\(posts :& users) ->
+    `on` (\(forums :& users) ->
+          forums ^. ForumCreator ==. users ^. UserId)
+  pure (forums, users)
+
+topPostsQuery :: SqlQuery (SqlExpr (Entity Forum), SqlExpr (Entity ForumPost), SqlExpr (Entity User), SqlExpr (Value Int))
+topPostsQuery = do
+  (forum :& posts :& users :& votes) <-
+    from $ Table @Forum
+    `InnerJoin` Table @ForumPost
+    `on` (\(forum :& posts) ->
+        forum ^. ForumId ==. posts ^. ForumPostForumId)
+    `InnerJoin` Table @User
+    `on` (\(_ :& posts :& users) ->
           posts ^. ForumPostAuthorId ==. users ^. UserId)
     `LeftOuterJoin` Table @Vote
-    `on` (\(posts :& _ :& votes) ->
+    `on` (\(_ :& posts :& _ :& votes) ->
             just (posts ^. ForumPostId) ==. votes ?. VotePostId)
   groupBy (posts ^. ForumPostId, users ^. UserId)
   let voteTotal = coalesceDefault [sum_ (votes ?. VoteValue)] (val 0)
   orderBy [desc voteTotal]
-  pure (posts, users, voteTotal)
+  pure (forum, posts, users, voteTotal)

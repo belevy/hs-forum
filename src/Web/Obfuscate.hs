@@ -171,27 +171,25 @@ decodeIdFields ctx = fromJSON . go
   go val = val
 
 encodeIdFields :: ToJSON a => H.HashidsContext -> a -> Value
-encodeIdFields ctx = go . toJSON
+encodeIdFields ctx = (go False) . toJSON
   where
-  go (Object oMap) = Object $ flip mapWithKey oMap $ \fieldName fieldValue -> 
+  go _ (Object oMap) = Object $ flip mapWithKey oMap $ \fieldName fieldValue -> 
       case fieldValue of
         v@(Object _) -> 
-          go v
+          go False v
         v@(Array a) -> 
-          if "ids" `T.isSuffixOf` fieldName then 
-            go v
-          else 
-            v
+          go ("ids" `T.isSuffixOf` fieldName) v
         v@(Number n) -> 
           if "id" `T.isSuffixOf` fieldName then 
-            go v
+            go False v
           else 
             v
         v -> v
 
-  go val@(Array a) = Array $ fmap go a
+  go skip val@(Array a) = Array $ fmap (go skip) a
 
-  go val@(Number n) 
+  go skip val@(Number n) 
+    | skip = val
     | not $ isInteger n = val
     | otherwise = res
     where
@@ -201,5 +199,5 @@ encodeIdFields ctx = go . toJSON
           let encoded = H.encode ctx [i]
           pure $ String $ cs encoded
 
-  go val = val
+  go _ val = val
 
