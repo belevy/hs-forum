@@ -20,6 +20,8 @@ import Data.Int
 import Web.Obfuscate
 import Web.AppHandler
 import Web.Errors
+
+import Data.PaginatedResponse
 import Env
 
 import Database.Esqueleto as E (Entity(..), Value(..))
@@ -58,13 +60,6 @@ data ForumPostResponse = ForumPostResponse
   , fprCreated :: UTCTime
   }
 
-data PaginatedResponse a = PaginatedResponse
-  { paginatedTotalCount :: Int64
-  , paginatedCurrentPage :: Int64
-  , paginatedPageSize :: Int64
-  , paginatedData :: [a]
-  }
-
 api :: Proxy Api
 api = Proxy
 
@@ -77,7 +72,7 @@ server = listForums :<|> getForum  :<|> getForumPosts
     listForums mPageSize mPage =
       fmap
       (toPaginatedResponse pageSize page forumToResponse)
-      (runDB $ getAllForums pageSize page)
+      (runDBReadOnly $ getAllForums pageSize page)
 
       where
         page = Maybe.fromMaybe 1 mPage
@@ -85,7 +80,7 @@ server = listForums :<|> getForum  :<|> getForumPosts
 
     getForum :: ForumId -> AppHandler ForumResponse
     getForum forumId = do
-      mForum <- runDB $ getForumById forumId
+      mForum <- runDBReadOnly $ getForumById forumId
       maybeNotFound $ fmap forumToResponse mForum
 
     getForumPosts :: ForumId
@@ -95,7 +90,7 @@ server = listForums :<|> getForum  :<|> getForumPosts
     getForumPosts forumId mPageSize mPage =
       fmap
       (toPaginatedResponse pageSize page packResponse)
-      (runDB $ getTopPostsInForum forumId pageSize page)
+      (runDBReadOnly $ getTopPostsInForum forumId pageSize page)
       where
         page = Maybe.fromMaybe 1 mPage
         pageSize = Maybe.fromMaybe 25 mPageSize
@@ -124,20 +119,6 @@ forumToResponse (Entity forumId forum, creator, admins) =
     , frAdministrators = fmap userToForumAdministrator admins
     }
 
-toPaginatedResponse :: Int64
-                    -> Int64
-                    -> (a -> b)
-                    -> (E.Value Int64, [a])
-                    -> PaginatedResponse b
-toPaginatedResponse pageSize page packResponse (Value totalCount, results) =
-  PaginatedResponse
-    { paginatedTotalCount = totalCount
-    , paginatedCurrentPage = page
-    , paginatedPageSize = pageSize
-    , paginatedData = fmap packResponse results
-    }
-
 $(deriveToJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "fa")} 'ForumAdministrator)
 $(deriveToJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "fr")} 'ForumResponse)
-$(deriveToJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "paginated")} 'PaginatedResponse)
 $(deriveToJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "fpr")} 'ForumPostResponse)

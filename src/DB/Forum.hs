@@ -19,7 +19,7 @@ import DB.QueryCombinators
 
 type ForumResult = (Entity Forum, Entity User, [Entity User])
 
-getAllForums :: MonadIO m => Int64 -> Int64 -> SqlPersistT m (Value Int64, [ForumResult])
+getAllForums :: MonadIO m => Int64 -> Int64 -> SqlReadT m (Value Int64, [ForumResult])
 getAllForums pageSize page = do
   totalCount <- select $ rowCount allForums
   forums <- select $ paginated pageSize page allForums
@@ -28,7 +28,7 @@ getAllForums pageSize page = do
     pure (forum, creator, admins)
   pure (head totalCount, forumsWithAdmins)
 
-getForumAdmins :: MonadIO m => ForumId -> SqlPersistT m [Entity User]
+getForumAdmins :: MonadIO m => ForumId -> SqlReadT m [Entity User]
 getForumAdmins forumId =
   select $ do
     (users :& roles) <-
@@ -40,7 +40,7 @@ getForumAdmins forumId =
         &&. roles ^. UserRoleForumId ==. val forumId
     pure users
 
-getForumById :: MonadIO m => ForumId -> SqlPersistT m (Maybe ForumResult)
+getForumById :: MonadIO m => ForumId -> SqlReadT m (Maybe ForumResult)
 getForumById forumId = do
   mForum <- fmap Maybe.listToMaybe $ select $ do
     (forums, users) <- allForums
@@ -49,7 +49,7 @@ getForumById forumId = do
   admins <- getForumAdmins forumId
   pure $ mForum >>= (\(forum,creator) -> pure (forum, creator, admins))
 
-getTopPostsInForum :: MonadIO m => ForumId -> Int64 -> Int64 -> SqlPersistT m (Value Int64, [(Entity ForumPost, Entity User, Value Int)])
+getTopPostsInForum :: MonadIO m => ForumId -> Int64 -> Int64 -> SqlReadT m (Value Int64, [(Entity ForumPost, Entity User, Value Int)])
 getTopPostsInForum forumId pageSize page = do
   totalCount <- select . rowCount . from $ SelectQuery forumPosts
   paginatedResults <- select $ paginated pageSize page $ forumPosts

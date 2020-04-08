@@ -2,6 +2,7 @@ module Env
   ( Env
   , withEnv
   , runDB
+  , runDBReadOnly
   ) where
 
 import Database.Persist.Sql
@@ -15,6 +16,9 @@ import UnliftIO (MonadUnliftIO)
 data Env = Env 
   { envPool :: Pool SqlBackend
   }
+
+runDBReadOnly :: (MonadReader Env m, MonadUnliftIO m) => SqlReadT m a -> m a
+runDBReadOnly = runDB
 
 runDB :: (MonadReader Env m, MonadUnliftIO m) => SqlPersistT m a -> m a
 runDB query = do
