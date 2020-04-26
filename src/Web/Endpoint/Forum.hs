@@ -20,6 +20,7 @@ import Data.Int
 import Web.Obfuscate
 import Web.AppHandler
 import Web.Errors
+import Web.Auth
 
 import Data.PaginatedResponse
 import Env
@@ -30,15 +31,17 @@ import DB.Model.Forum
 import DB.Model.ForumPost
 import DB.Model.User
 
-type Api = "forums" :> QueryParam "pageSize" Int64
-                    :> QueryParam "page" Int64
-                    :> ObfuscatedGet '[JSON] (PaginatedResponse ForumResponse)
-      :<|> "forums" :> ObfuscatedCapture "forumId" ForumId :> ObfuscatedGet '[JSON] ForumResponse
-      :<|> "forums" :> ObfuscatedCapture "forumId" ForumId
-                    :> "posts"
-                    :> QueryParam "pageSize" Int64
-                    :> QueryParam "page" Int64
-                    :> ObfuscatedGet '[JSON] (PaginatedResponse ForumPostResponse)
+type Api = Protected :> "forums" :> 
+      (    QueryParam "pageSize" Int64
+           :> QueryParam "page" Int64
+           :> ObfuscatedGet '[JSON] (PaginatedResponse ForumResponse)
+      :<|> ObfuscatedCapture "forumId" ForumId :> ObfuscatedGet '[JSON] ForumResponse
+      :<|> ObfuscatedCapture "forumId" ForumId
+           :> "posts"
+           :> QueryParam "pageSize" Int64
+           :> QueryParam "page" Int64
+           :> ObfuscatedGet '[JSON] (PaginatedResponse ForumPostResponse)
+      )
 
 data ForumResponse = ForumResponse
   { frForumId :: ForumId
@@ -64,7 +67,7 @@ api :: Proxy Api
 api = Proxy
 
 server :: AppServer Api
-server = listForums :<|> getForum  :<|> getForumPosts
+server _session = listForums :<|> getForum  :<|> getForumPosts
   where
     listForums :: Maybe Int64
                -> Maybe Int64

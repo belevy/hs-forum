@@ -12,6 +12,7 @@ data Config = Config
   { configDb :: DatabaseConfig
   , configPort :: Int
   , configHashidsSalt :: String
+  , configRedis :: RedisConfig
   } deriving Show
 
 data DatabaseConfig = DatabaseConfig
@@ -20,6 +21,12 @@ data DatabaseConfig = DatabaseConfig
   , dbConfigHost :: String
   , dbConfigPort :: Int
   , dbConfigDbName :: String
+  } deriving Show
+
+data RedisConfig = RedisConfig
+  { redisConfigHost :: String
+  , redisConfigPort :: Int
+  , redisConfigMaxConnections :: Int
   } deriving Show
 
 dbConnectionString :: Config -> BS.ByteString
@@ -38,3 +45,4 @@ loadConfigFile =
 
 $(deriveFromJSON defaultOptions{fieldLabelModifier = camelTo2 '-' . drop (Text.length "config")} ''Config)
 $(deriveFromJSON defaultOptions{fieldLabelModifier = camelTo2 '-' . drop (Text.length "dbConfig")} ''DatabaseConfig)
+$(deriveFromJSON defaultOptions{fieldLabelModifier = camelTo2 '-' . drop (Text.length "redisConfig")} ''RedisConfig)

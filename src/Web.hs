@@ -20,9 +20,9 @@ import Web.Obfuscate
 import qualified Data.Text as T
 import Data.Aeson (defaultOptions, camelTo2, fieldLabelModifier)
 import Data.Aeson.TH
-import Hashids
-import System.Entropy (getEntropy)
 import qualified Web.Endpoint.Forum as Forum
+import Web.Auth
+import Hashids
 
 type Api = "session" :> ObfuscatedCapture "userId" UserId :> Post '[JSON] ()
      :<|> Forum.Api
@@ -41,8 +41,8 @@ mkApp :: Config.Config -> IO Application
 mkApp config = 
   withEnv config $ \env -> 
   let Right hashidsCtx = mkHashidsContext "" 6 defaultAlphabet
-      context = hashidsCtx :. EmptyContext
-      contextProxy = Proxy @'[HashidsContext]
+      context = authHandler env :. hashidsCtx :. EmptyContext
+      contextProxy = Proxy @'[SessionAuthHandler, HashidsContext]
   in do 
     pure $ serveWithContext api context
           $ hoistServerWithContext api contextProxy (runAppHandler env) server
@@ -53,10 +53,3 @@ runApp = do
     app <- mkApp config
     putStrLn $ "Running on " <> (show $ Config.configPort config)
     Warp.run (Config.configPort config) app 
-
-data TestJSON = TestJSON
-  { _testId :: UserId
-  , _testManyIds :: [UserId]
-  }
-
-$(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "_test")} 'TestJSON)

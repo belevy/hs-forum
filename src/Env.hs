@@ -1,5 +1,5 @@
 module Env 
-  ( Env
+  ( Env(..)
   , withEnv
   , runDB
   , runDBReadOnly
@@ -11,10 +11,12 @@ import Config
 import Database.Persist.Postgresql
 import Control.Monad.Reader
 import Control.Monad.Logger (MonadLogger, LoggingT, runStdoutLoggingT)
-import UnliftIO (MonadUnliftIO)
+import UnliftIO (MonadUnliftIO, withRunInIO)
+import qualified Database.Redis as Redis
 
 data Env = Env 
   { envPool :: Pool SqlBackend
+  , redisConn :: Redis.Connection
   }
 
 runDBReadOnly :: (MonadReader Env m, MonadUnliftIO m) => SqlReadT m a -> m a
@@ -30,6 +32,15 @@ withEnv :: MonadUnliftIO m
         -> (Env -> LoggingT m a) 
         -> m a
 withEnv config action =
-  runStdoutLoggingT $
-  withPostgresqlPool (dbConnectionString config) 1 $ action . Env
+  withRunInIO $ \runInIO ->
+  Redis.withCheckedConnect redisConnectInfo $ \conn -> 
+  runInIO $ runStdoutLoggingT $ withPostgresqlPool (dbConnectionString config) 1 $ \pool ->
+    action $ Env pool conn
+
+  where 
+    redisConnectInfo = Redis.defaultConnectInfo
+      { Redis.connectHost = redisConfigHost $ configRedis config
+      , Redis.connectPort = Redis.PortNumber . fromIntegral . redisConfigPort . configRedis $ config
+      , Redis.connectMaxConnections = redisConfigMaxConnections $ configRedis config
+      }
 
