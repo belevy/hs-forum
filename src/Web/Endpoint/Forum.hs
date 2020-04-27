@@ -2,7 +2,6 @@
 
 module Web.Endpoint.Forum
   ( Api
-  , api
   , server
   ) where
 
@@ -62,9 +61,6 @@ data ForumPostResponse = ForumPostResponse
   , fprSortOrder :: Int
   , fprCreated :: UTCTime
   }
-
-api :: Proxy Api
-api = Proxy
 
 server :: AppServer Api
 server _session = listForums :<|> getForum  :<|> getForumPosts

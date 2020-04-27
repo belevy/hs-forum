@@ -21,18 +21,16 @@ import qualified Data.Text as T
 import Data.Aeson (defaultOptions, camelTo2, fieldLabelModifier)
 import Data.Aeson.TH
 import qualified Web.Endpoint.Forum as Forum
+import qualified Web.Endpoint.Session as Session
 import Web.Auth
+import Data.SessionData
 import Hashids
 
-type Api = "session" :> ObfuscatedCapture "userId" UserId :> Post '[JSON] ()
+type Api = Session.Api 
      :<|> Forum.Api
 
 server :: AppServer Api 
-server = session :<|> Forum.server
-  where
-  session userId = do
-    runDB $
-      pure ()
+server = Session.server :<|> Forum.server
 
 api :: Proxy Api
 api = Proxy

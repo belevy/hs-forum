@@ -1,4 +1,4 @@
-module Web.Auth (Protected, SessionAuthHandler, SessionData(..), authHandler) where
+module Web.Auth (Protected, SessionAuthHandler, authHandler) where
 
 import Servant.API
 import Servant.Server.Experimental.Auth
@@ -8,11 +8,9 @@ import DB.Model.User
 import DB.Session
 import Control.Monad.IO.Class
 import Web.Errors
+import Data.SessionData
   
 type Protected = AuthProtect "session-cookie"
-
-data SessionData = SessionData 
-  { sessionUser :: User }
 
 type SessionAuthHandler = AuthHandler Request SessionData
 
