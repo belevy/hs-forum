@@ -25,6 +25,7 @@ services:
     build:
       context: '.'
       dockerfile: Dockerfile-backend
+      target: prod
     networks:
       - internal
     ports: 
