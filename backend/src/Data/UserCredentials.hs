@@ -36,5 +36,4 @@ credentialsToModel cred = do
       , userUpdatedAt = Nothing
       }
 
-
 $(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "uc")} 'UserCredentials)

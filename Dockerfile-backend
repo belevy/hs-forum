@@ -1,10 +1,60 @@
-FROM fpco/stack-build:lts-14.27 as ghcid
-RUN stack install ghcid --resolver=lts-14.27
+FROM ubuntu:18.04 as base
+RUN apt-get update
+RUN apt-get install -y \
+  libgmp10 \
+  libpq-dev
 
-FROM fpco/stack-build:lts-14.27
-RUN mkdir -p /var/hs-forum
-VOLUME /root/.stack
+FROM base as stack-base
+ARG STACK_RESOLVER=lts-14.27
+RUN apt-get install -y curl
+RUN curl -sSL https://get.haskellstack.org/ | sh
+ENV PATH="/root/.local/bin:${PATH}"
+RUN stack setup --allow-different-user --resolver=$STACK_RESOLVER
+RUN stack build --resolver=$STACK_RESOLVER \
+     aeson \
+     bcrypt \
+     bytestring \
+     base64-bytestring \
+     cookie \
+     entropy \
+     esqueleto \
+     hedis \
+     http-api-data \
+     http-types \
+     monad-logger \
+     mtl \
+     persistent \
+     persistent-postgresql \
+     persistent-template \
+     pureMD5 \
+     random \
+     resource-pool \
+     scientific \
+     servant \
+     servant-server \
+     string-conversions \
+     text \
+     time \
+     transformers \
+     unliftio \
+     unordered-containers \
+     wai \
+     warp \
+     yaml
+
+
+FROM stack-base as dev
+ARG STACK_RESOLVER=lts-14.27
+RUN stack install --resolver=$STACK_RESOLVER ghcid hspec
 VOLUME /var/hs-forum
-COPY --from=ghcid /root/.local/bin/ghcid /root/.local/bin/ghcid
 WORKDIR /var/hs-forum
-CMD ghcid --command="stack ghci --allow-different-user" --run="Web.runApp"
+CMD ["bash", "run-dev.sh"]
+
+FROM stack-base as builder
+COPY backend /var/hs-forum
+WORKDIR /var/hs-forum
+RUN stack install --allow-different-user .
+
+FROM base
+COPY --from=builder /root/.local/bin /root/.local/bin
+CMD ["hs-forum-exe"]

@@ -25,9 +25,6 @@ services:
     build:
       context: '.'
       dockerfile: Dockerfile-backend
-    volumes:
-      - .:/var/hs-forum/
-      - stack-data:/root/.stack
     networks:
       - internal
     ports: 
