@@ -12,6 +12,7 @@ RUN stack setup --allow-different-user --resolver=$STACK_RESOLVER
 COPY backend/stack.yaml .
 COPY backend/package.yaml .
 RUN stack build --only-dependencies
+
 FROM stack-base as dev
 RUN stack install ghcid
 VOLUME /var/hs-forum

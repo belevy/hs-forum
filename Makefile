@@ -4,7 +4,7 @@ CWD=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 DOCKER_FILE=Dockerfile-backend
 
 start: 
-	@docker-compose up -d
+	@docker-compose up -d --build
 
 stop: 
 	@docker-compose down 
