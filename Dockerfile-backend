@@ -1,6 +1,5 @@
 FROM ubuntu:18.04 as base
-RUN apt-get update
-RUN apt-get install -y \
+RUN apt-get update && apt-get install -y \
   libgmp10 \
   libpq-dev
 
@@ -9,43 +8,10 @@ ARG STACK_RESOLVER=lts-14.27
 RUN apt-get install -y curl
 RUN curl -sSL https://get.haskellstack.org/ | sh
 ENV PATH="/root/.local/bin:${PATH}"
+RUN stack setup --allow-different-user --resolver=$STACK_RESOLVER
 COPY backend/stack.yaml .
 COPY backend/package.yaml .
-RUN stack setup --allow-different-user
-RUN stack build \
-     aeson \
-     bcrypt \
-     bytestring \
-     base64-bytestring \
-     cookie \
-     entropy \
-     esqueleto \
-     hashids-st \
-     hedis \
-     http-api-data \
-     http-types \
-     monad-logger \
-     mtl \
-     persistent \
-     persistent-postgresql \
-     persistent-template \
-     pureMD5 \
-     random \
-     resource-pool \
-     scientific \
-     servant \
-     servant-server \
-     string-conversions \
-     text \
-     time \
-     transformers \
-     unliftio \
-     unordered-containers \
-     wai \
-     warp \
-     yaml
-
-
+RUN stack build --only-dependencies
 FROM stack-base as dev
 RUN stack install ghcid
 VOLUME /var/hs-forum
