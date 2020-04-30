@@ -1,10 +1,13 @@
-.PHONY: docker dev-docker
+.PHONY: dev start stop
 
 CWD=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 DOCKER_FILE=Dockerfile-backend
 
-start: $(DOCKER_FILE)
+start: 
 	@docker-compose up -d
+
+stop: 
+	@docker-compose down 
 
 dev: $(DOCKER_FILE)
 	@docker build . -f $(DOCKER_FILE) --target dev --tag hs-forum/dev:latest

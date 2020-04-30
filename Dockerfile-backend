@@ -9,8 +9,10 @@ ARG STACK_RESOLVER=lts-14.27
 RUN apt-get install -y curl
 RUN curl -sSL https://get.haskellstack.org/ | sh
 ENV PATH="/root/.local/bin:${PATH}"
-RUN stack setup --allow-different-user --resolver=$STACK_RESOLVER
-RUN stack build --resolver=$STACK_RESOLVER \
+COPY backend/stack.yaml .
+COPY backend/package.yaml .
+RUN stack setup --allow-different-user
+RUN stack build \
      aeson \
      bcrypt \
      bytestring \
@@ -18,6 +20,7 @@ RUN stack build --resolver=$STACK_RESOLVER \
      cookie \
      entropy \
      esqueleto \
+     hashids-st \
      hedis \
      http-api-data \
      http-types \
@@ -44,8 +47,7 @@ RUN stack build --resolver=$STACK_RESOLVER \
 
 
 FROM stack-base as dev
-ARG STACK_RESOLVER=lts-14.27
-RUN stack install --resolver=$STACK_RESOLVER ghcid hspec
+RUN stack install ghcid
 VOLUME /var/hs-forum
 WORKDIR /var/hs-forum
 CMD ["bash", "run-dev.sh"]
