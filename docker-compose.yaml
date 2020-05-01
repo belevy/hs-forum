@@ -6,6 +6,8 @@ services:
       - internal
     ports:
       - "6379"
+    volumes:
+      - redis-data:/DATA
     deploy:
       restart_policy:
         condition: on-failure
@@ -26,6 +28,7 @@ services:
       context: '.'
       dockerfile: Dockerfile-backend
       target: prod
+    init: true
     networks:
       - internal
     ports: 
@@ -51,7 +54,7 @@ services:
 
 volumes:
   pg-data:
-  stack-data:
+  redis-data:
 
 networks:
   internal:

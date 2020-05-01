@@ -26,6 +26,4 @@ RUN stack install --allow-different-user .
 
 FROM base as prod
 COPY --from=builder /root/.local/bin /root/.local/bin
-COPY --from=builder /var/hs-forum/config.yaml config.yaml
-COPY --from=fpco/pid1 /sbin/pid1 /sbin/pid1
-CMD ["/sbin/pid1", "/root/.local/bin/hs-forum-exe"]
+CMD ["/root/.local/bin/hs-forum-exe"]

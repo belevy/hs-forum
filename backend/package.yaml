@@ -9,6 +9,7 @@ copyright:           "2020 Author name here"
 extra-source-files:
 - README.md
 - ChangeLog.md
+- config.yaml
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
