@@ -1,4 +1,4 @@
-.PHONY: dev repl start stop 
+.PHONY: dev repl start stop clean
 
 CWD=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 DOCKER_FILE=Dockerfile-backend
@@ -8,7 +8,7 @@ DOCKER_FILE=Dockerfile-backend
 	@touch $@
 
 .docker-image-built: $(DOCKER_FILE) backend/
-	@docker-compose build backend
+	@docker build . -f $(DOCKER_FILE) --tag hs-forum/prod:latest
 	@touch $@
 
 start: .docker-image-built
@@ -28,3 +28,6 @@ dev: .dev-docker-image-built
 
 repl: .dev-docker-image-built	
 	$(call dev-docker-up, stack ghci --allow-different-user)
+
+clean:
+	@rm .dev-docker-image-built .docker-image-built
