@@ -4,3 +4,4 @@ hs-forum.cabal
 *.sw*
 config.yaml
 elm-stuff/
+.*docker*
