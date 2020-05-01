@@ -25,5 +25,7 @@ WORKDIR /var/hs-forum
 RUN stack install --allow-different-user .
 
 FROM base as prod
+ENV PATH="/root/.local/bin:${PATH}"
 COPY --from=builder /root/.local/bin /root/.local/bin
+COPY backend/config.yaml . 
 CMD ["/root/.local/bin/hs-forum-exe"]
