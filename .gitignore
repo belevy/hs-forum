@@ -5,3 +5,6 @@ hs-forum.cabal
 config.yaml
 elm-stuff/
 .*docker*
+node_modules/
+bundle.js
+

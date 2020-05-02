@@ -3,19 +3,27 @@
 CWD=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 DOCKER_FILE=Dockerfile-backend
 
-.dev-docker-image-built: $(DOCKER_FILE) backend/
+webroot/scripts/bundle.js: frontend/*
+	@cd frontend && npm run-script build
+
+.dev-docker-image-built: $(DOCKER_FILE) backend/*
 	@docker build . -f $(DOCKER_FILE) --target dev --tag hs-forum/dev:latest
 	@touch $@
 
-.docker-image-built: $(DOCKER_FILE) backend/
+.docker-image-built: $(DOCKER_FILE) backend/*
 	@docker build . -f $(DOCKER_FILE) --tag hs-forum/prod:latest
 	@touch $@
 
-start: .docker-image-built
+start: .docker-image-built webroot/scripts/bundle.js
 	@docker-compose up -d
 
 stop: 
 	@docker-compose down 
+
+elm-dev: 
+	@docker-compose up -d
+	-@cd frontend && npm run-script watch
+	@docker-compose down
 
 define dev-docker-up 
 	@docker-compose up -d --scale backend=0
