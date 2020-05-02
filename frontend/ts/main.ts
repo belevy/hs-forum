@@ -1,3 +1,5 @@
-import Elm from "Elm/Main.elm"
+import { Elm } from "Elm/Main.elm"
 
-var app = Elm.Main.init();
+document.addEventListener('DOMContentLoaded', function() {
+  var app = Elm.Main.init();
+});

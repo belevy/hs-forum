@@ -39,7 +39,7 @@ module.exports = {
     }],
   },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js'],
+    extensions: ['.tsx', '.ts', '.js', '.elm'],
     alias: {
       Elm: path.resolve("elm", "src")
     }
