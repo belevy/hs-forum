@@ -119,7 +119,7 @@ view model =
                         , label = Input.labelAbove [] <| text "Password"
                         , show = False
                         }
-                    , Input.button [ width fill, Background.color (rgb 0.8 0.4 0.8), padding 12 ]
+                    , Input.button [ width fill, Background.color (rgb255 33 160 192), padding 12 ]
                         { onPress = Nothing
                         , label = el [ centerX ] <| text "Login"
                         }
