@@ -30,9 +30,5 @@ server = currentSession :<|> login
       conn <- asks redisConn
       mUser <- runDB $ fetchAndVerifyUser creds 
       user <- maybeThrowError err403 mUser
-      sessionKey <- createSession conn (entityVal user) (60*60*24*30)
-      pure $ addHeader (defaultSetCookie
-          { setCookieName = "hs-forum-session-key"
-          , setCookieValue = sessionKey 
-          , setCookieMaxAge = Just (60*60*24*30)
-          }) ()
+      sessionCookie <- createSession conn (entityVal user) (60*60*24*30)
+      pure $ addHeader sessionCookie ()

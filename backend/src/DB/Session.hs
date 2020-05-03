@@ -15,6 +15,7 @@ import DB.Model.User
 import DB.User
 import Database.Redis as Redis
 import Data.Cookie
+import Web.Cookie
 import Data.SessionData as SessionData
 
 fetchSession :: MonadIO m => Redis.Connection -> Token -> m (Maybe SessionData)
@@ -22,13 +23,13 @@ fetchSession conn sessionKey = do
   eSession <- liftIO $ runRedis conn $ Redis.get sessionKey
   pure $ either (\_ -> Nothing) (SessionData.decode =<<) eSession
 
-createSession :: MonadIO m => Redis.Connection -> User -> Integer -> m Token
+createSession :: MonadIO m => Redis.Connection -> User -> Integer -> m SetCookie
 createSession conn user expiration = liftIO $ do
   sessionKey <- generateRandomToken
   runRedis conn $ Redis.setex sessionKey expiration (SessionData.encode $ SessionData user)
-  pure sessionKey
-  where
-    toMd5ByteString :: String -> C8.ByteString
-    toMd5ByteString =
-      md5DigestBytes . md5 . LC8.pack
+  pure $ defaultSetCookie
+      { setCookieName = "hs-forum-session-key"
+      , setCookieValue = sessionKey 
+      , setCookieMaxAge = Just (fromIntegral expiration)
+      }
 
