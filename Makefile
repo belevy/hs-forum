@@ -26,7 +26,7 @@ elm-dev:
 	@docker-compose down
 
 define dev-docker-up 
-	@docker-compose up -d --scale backend=0 --scale frontend=0
+	@docker-compose up -d --scale backend=0 backend 
 	@docker create -it --init -v $(CWD)backend:/var/hs-forum --network="hs-forum_internal" -p=8080:8080 --name="dev-docker" --net-alias="backend" hs-forum/dev $(1) > /dev/null
 	@docker start dev-docker > /dev/null
 	@docker-compose up -d --scale backend=0 frontend 
