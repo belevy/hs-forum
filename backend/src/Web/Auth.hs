@@ -1,6 +1,6 @@
 module Web.Auth (Protected, SessionAuthHandler, authHandler) where
 
-import Servant.API
+import Servant
 import Servant.Server.Experimental.Auth
 import Network.Wai
 import Env
@@ -9,6 +9,7 @@ import DB.Session
 import Control.Monad.IO.Class
 import Web.Errors
 import Data.SessionData
+import Web.Cookie
   
 type Protected = AuthProtect "session-cookie"
 
@@ -20,6 +21,6 @@ authHandler :: Env -> SessionAuthHandler
 authHandler env = mkAuthHandler handler
   where
     handler req = do
-      sessionKey <- maybeUnauthorized $ lookup "hs-forum-session-key" $ requestHeaders req
-      user <- maybeUnauthorized =<< fetchSession (redisConn env) (sessionKey)
-      pure $ SessionData { sessionUser = user }
+      cookies <- maybeThrowError err400 $ lookup "cookie" $ requestHeaders req
+      sessionKey <- maybeUnauthorized $ lookup "hs-forum-session-key" $ parseCookies cookies 
+      maybeUnauthorized =<< fetchSession (redisConn env) (sessionKey)

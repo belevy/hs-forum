@@ -7,6 +7,8 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
+import Http
+import Json.Encode as Encode
 import Url exposing (Url)
 
 
@@ -37,6 +39,8 @@ type Msg
     | UrlChanged Url
     | UsernameUpdated String
     | PasswordUpdated String
+    | FormSubmitted
+    | SessionCreateResponse (Result Http.Error ())
     | BrowserResized Int Int
 
 
@@ -63,6 +67,29 @@ main =
         }
 
 
+type alias UserCredentials =
+    { username : String
+    , password : String
+    }
+
+
+encodeCredentials : UserCredentials -> Encode.Value
+encodeCredentials c =
+    Encode.object
+        [ ( "user_name", Encode.string c.username )
+        , ( "password", Encode.string c.password )
+        ]
+
+
+createSession : (Result Http.Error () -> msg) -> UserCredentials -> Cmd msg
+createSession toMsg creds =
+    Http.post
+        { body = Http.jsonBody <| encodeCredentials creds
+        , expect = Http.expectWhatever toMsg
+        , url = "/api/sessions"
+        }
+
+
 update msg model =
     case msg of
         UrlRequested request_ ->
@@ -80,6 +107,22 @@ update msg model =
             ( { model | password = newPassword }
             , Cmd.none
             )
+
+        FormSubmitted ->
+            let
+                submitCmd =
+                    if model.password /= "" && model.username /= "" then
+                        createSession SessionCreateResponse { username = model.username, password = model.password }
+
+                    else
+                        Cmd.none
+            in
+            ( model
+            , submitCmd
+            )
+
+        SessionCreateResponse res ->
+            ( model, Cmd.none )
 
         BrowserResized width height ->
             ( { model | device = classifyDevice { width = width, height = height } }
@@ -119,8 +162,8 @@ view model =
                         , label = Input.labelAbove [] <| text "Password"
                         , show = False
                         }
-                    , Input.button [ width fill, Background.color (rgb255 33 160 192), padding 12 ]
-                        { onPress = Nothing
+                    , Input.button [ width fill, Background.color (rgb255 0x33 0x88 0xCD), padding 12 ]
+                        { onPress = Just FormSubmitted
                         , label = el [ centerX ] <| text "Login"
                         }
                     ]

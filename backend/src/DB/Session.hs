@@ -10,24 +10,22 @@ import Data.String
 import qualified Data.ByteString.Char8 as C8
 import qualified Data.ByteString.Lazy.Char8 as LC8
 import Data.Digest.Pure.MD5
-
 import Data.UserCredentials
 import DB.Model.User
-import DB.Model.Session (Session, SessionKey)
 import DB.User
-import qualified DB.Model.Session as Session
 import Database.Redis as Redis
 import Data.Cookie
+import Data.SessionData as SessionData
 
-fetchSession :: MonadIO m => Redis.Connection -> SessionKey -> m (Maybe User)
+fetchSession :: MonadIO m => Redis.Connection -> Token -> m (Maybe SessionData)
 fetchSession conn sessionKey = do
   eSession <- liftIO $ runRedis conn $ Redis.get sessionKey
-  pure $ either (\_ -> Nothing) (\mSession -> Session.decode =<< mSession) eSession
+  pure $ either (\_ -> Nothing) (SessionData.decode =<<) eSession
 
-createSession :: MonadIO m => Redis.Connection -> User -> Integer -> m SessionKey
+createSession :: MonadIO m => Redis.Connection -> User -> Integer -> m Token
 createSession conn user expiration = liftIO $ do
   sessionKey <- generateRandomToken
-  runRedis conn $ Redis.setex sessionKey expiration (Session.encode user)
+  runRedis conn $ Redis.setex sessionKey expiration (SessionData.encode $ SessionData user)
   pure sessionKey
   where
     toMd5ByteString :: String -> C8.ByteString
