@@ -7,12 +7,13 @@ module Env
 
 import Database.Persist.Sql
 import Data.Pool
-import Config
 import Database.Persist.Postgresql
 import Control.Monad.Reader
 import Control.Monad.Logger (MonadLogger, LoggingT, runStdoutLoggingT)
 import UnliftIO (MonadUnliftIO, withRunInIO)
 import qualified Database.Redis as Redis
+
+import Config
 
 data Env = Env 
   { envPool :: Pool SqlBackend

@@ -4,9 +4,7 @@ import Servant
 import Servant.Server.Experimental.Auth
 import Network.Wai
 import Env
-import DB.Model.User
 import DB.Session
-import Control.Monad.IO.Class
 import Web.Errors
 import Data.SessionData
 import Web.Cookie

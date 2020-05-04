@@ -8,13 +8,13 @@ module Web.Endpoint.Forum
 import Servant
 import Data.Aeson
 import Data.Aeson.TH
-import Data.Coerce
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time.Clock (UTCTime)
 import UnliftIO (liftIO, throwIO)
 import qualified Data.Maybe as Maybe
 import Data.Int
+import Database.Esqueleto as E (Entity(..), Value(..))
 
 import Web.Obfuscate
 import Web.AppHandler
@@ -23,8 +23,6 @@ import Web.Auth
 
 import Data.PaginatedResponse
 import Env
-
-import Database.Esqueleto as E (Entity(..), Value(..))
 import DB.Forum
 import DB.Model.Forum
 import DB.Model.ForumPost

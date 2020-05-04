@@ -1,7 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Data.UserCredentials where 
 
-import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson
 import Data.Aeson.TH

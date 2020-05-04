@@ -1,6 +1,6 @@
 module DB.User where
+
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans (lift)
 import Control.Monad.Except
 import Database.Esqueleto hiding (from, on)
 import Database.Esqueleto.Experimental
@@ -9,7 +9,6 @@ import Data.Text (Text)
 import Data.Time.Clock
 
 import Data.UserCredentials 
-
 import DB.Model.User
 
 data UserRegistrationError 
