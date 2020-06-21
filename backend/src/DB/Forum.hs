@@ -5,9 +5,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.Maybe as Maybe
 import Data.Int
-
-import Database.Esqueleto hiding (from, on)
-import Database.Esqueleto.Experimental
+import Database.Esqueleto.Extended
 
 import DB.Model.Forum
 import DB.Model.ForumPost
@@ -19,14 +17,14 @@ import DB.QueryCombinators
 
 type ForumResult = (Entity Forum, Entity User, [Entity User])
 
-getAllForums :: MonadIO m => Int64 -> Int64 -> SqlReadT m (Value Int64, [ForumResult])
+getAllForums :: MonadIO m => Int64 -> Int64 -> SqlReadT m (Int64, [ForumResult])
 getAllForums pageSize page = do
-  totalCount <- select $ rowCount allForums
+  totalCount <- selectCount allForums
   forums <- select $ paginated pageSize page allForums
   forumsWithAdmins <- forM forums $ \(forum, creator) -> do
     admins <- getForumAdmins (entityKey forum)
     pure (forum, creator, admins)
-  pure (head totalCount, forumsWithAdmins)
+  pure (totalCount, forumsWithAdmins)
 
 getForumAdmins :: MonadIO m => ForumId -> SqlReadT m [Entity User]
 getForumAdmins forumId =
@@ -42,18 +40,18 @@ getForumAdmins forumId =
 
 getForumById :: MonadIO m => ForumId -> SqlReadT m (Maybe ForumResult)
 getForumById forumId = do
-  mForum <- fmap Maybe.listToMaybe $ select $ do
+  mForum <- selectFirst $ do
     (forums, users) <- allForums
     where_ $ forums ^. ForumId ==. val forumId
     pure (forums, users)
   admins <- getForumAdmins forumId
   pure $ mForum >>= (\(forum,creator) -> pure (forum, creator, admins))
 
-getTopPostsInForum :: MonadIO m => ForumId -> Int64 -> Int64 -> SqlReadT m (Value Int64, [(Entity ForumPost, Entity User, Value Int)])
+getTopPostsInForum :: MonadIO m => ForumId -> Int64 -> Int64 -> SqlReadT m (Int64, [(Entity ForumPost, Entity User, Value Int)])
 getTopPostsInForum forumId pageSize page = do
-  totalCount <- select . rowCount . from $ SelectQuery forumPosts
+  totalCount <- selectCount . from $ SelectQuery forumPosts
   paginatedResults <- select $ paginated pageSize page $ forumPosts
-  pure (head totalCount, paginatedResults)
+  pure (totalCount, paginatedResults)
     where
       forumPosts = do
         res@(_, post, u, v) <- topPostsQuery

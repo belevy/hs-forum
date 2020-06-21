@@ -2,9 +2,7 @@ module DB.User where
 
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Except
-import Database.Esqueleto hiding (from, on)
-import Database.Esqueleto.Experimental
-import Data.Maybe (listToMaybe)
+import Database.Esqueleto.Extended
 import Data.Text (Text)
 import Data.Time.Clock
 
@@ -31,15 +29,15 @@ registerUser credentials = runExceptT $ do
 
 
 fetchUserByUsername :: MonadIO m => Text -> SqlReadT m (Maybe (Entity User))
-fetchUserByUsername userName = fmap listToMaybe $ 
-    select $ do 
+fetchUserByUsername userName = 
+    selectFirst $ do 
     users <- from $ Table @User
     where_ $ users ^. UserUserName ==. val userName
     pure users
   
 fetchUserByUserId :: MonadIO m => UserId -> SqlReadT m (Maybe (Entity User))
-fetchUserByUserId userId = fmap listToMaybe $ 
-    select $ do 
+fetchUserByUserId userId =
+    selectFirst $ do 
     users <- from $ Table @User
     where_ $ users ^. UserId ==. val userId
     pure users

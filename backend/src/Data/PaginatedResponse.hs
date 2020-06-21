@@ -7,7 +7,6 @@ module Data.PaginatedResponse
 
 import Data.Aeson (defaultOptions, fieldLabelModifier, camelTo2)
 import Data.Aeson.TH (deriveToJSON)
-import Database.Esqueleto (Value(..))
 import qualified Data.Text as T
 import Data.Int
 
@@ -23,9 +22,9 @@ data PaginatedResponse a = PaginatedResponse
 toPaginatedResponse :: Int64
                     -> Int64
                     -> (a -> b)
-                    -> (Value Int64, [a])
+                    -> (Int64, [a])
                     -> PaginatedResponse b
-toPaginatedResponse pageSize page packResponse (Value totalCount, results) =
+toPaginatedResponse pageSize page packResponse (totalCount, results) =
   PaginatedResponse
     { paginatedTotalCount = totalCount
     , paginatedCurrentPage = page

@@ -1,8 +1,8 @@
-module DB.QueryCombinators (paginated, rowCount)
+module DB.QueryCombinators (paginated)
   where
 
 import Control.Monad
-import Database.Esqueleto
+import Database.Esqueleto.Extended
 import Data.Int
 
 paginated :: Int64 -> Int64 -> SqlQuery a -> SqlQuery a
@@ -11,8 +11,3 @@ paginated pageSize page q = do
   limit pageSize
   offset ((page - 1) * pageSize)
   pure res
-
-rowCount :: SqlQuery a -> SqlQuery (SqlExpr (Value Int64))
-rowCount q = do
-  void q
-  pure countRows
