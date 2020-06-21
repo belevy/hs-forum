@@ -23,26 +23,38 @@ module.exports = {
   mode: 'development',
   
   module: {
-    rules: [{
-      test: /\.tsx?$/,
-      use: 'ts-loader',
-      exclude: /node_modules/
-    }, {
-      test: /\.elm$/,
-      exclude: [/elm-stuff/, /node_modules/],
-      use: {
-        loader: 'elm-webpack-loader',
-        options: {
-          cwd: path.resolve(__dirname, 'elm'),
-          debug: true
+    rules: [
+      {
+        test: /\.tsx?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/
+      }, 
+      {
+        test: /\.elm$/,
+        exclude: [/elm-stuff/, /node_modules/],
+        use: {
+          loader: 'elm-webpack-loader',
+          options: {
+            cwd: path.resolve(__dirname, 'elm'),
+            debug: true
+          }
         }
+      },
+      {
+        test: /\.scss$/,
+        use: [ 
+          'style-loader',
+          'css-loader',
+          'sass-loader',
+        ]
       }
-    }],
+    ],
   },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js', '.elm'],
+    extensions: ['.tsx', '.ts', '.js', '.elm', '.scss'],
     alias: {
-      Elm: path.resolve("elm", "src")
+      '@elm': path.resolve("elm", "src"),
+      '@styles': path.resolve("styles"),
     }
   }
 };

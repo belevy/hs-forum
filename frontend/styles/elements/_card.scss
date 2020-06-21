@@ -1,0 +1,20 @@
+@import '~@styles/variables/fonts';
+@import '~@styles/utilities/flex';
+
+.card {
+  border-radius: 3px;
+  min-width: 256px;
+  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+  &__header {
+    @include sans-serif;
+    @include center-inside;
+    padding: 1rem 0 0.5rem;
+    font-size: 1.33rem;
+    font-weight: 600;
+  }
+  &__body {
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 400;
+  }
+}

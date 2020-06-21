@@ -1,0 +1,24 @@
+.flex {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.flex--vertical  {
+  flex-direction: column;
+}
+
+.flex--horizontal {
+  flex-direction: row;
+}
+
+.centered {
+  align-self: center;
+}
+
+@mixin center-inside {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

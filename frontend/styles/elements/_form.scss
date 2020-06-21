@@ -1,0 +1,69 @@
+@import '~@styles/variables/colors';
+@import '~@styles/variables/fonts';
+
+.form {
+  @include sans-serif;
+}
+
+.form__fieldset {
+  border: 0;
+  position: relative;
+  padding: 0;
+  margin-bottom: 1rem;
+  height: 2.4rem;
+}
+
+.form__fieldset--label-above {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 4px;
+}
+
+.form__fieldset__label {
+  font-size: 1.2rem;
+  top: .8rem;
+  position: absolute;
+  transition: top 0.3s, font-size 0.3s, color 0.3s;
+  color: $dark-grey;
+}
+
+.form__fieldset:focus-within .form__fieldset__label,
+.form__fieldset--active .form__fieldset__label {
+  font-size: 1rem;
+  top: -.1rem;
+}
+.form__fieldset:focus-within .form__fieldset__label {
+  color: $active-color;
+}
+
+.form__fieldset__input {
+  padding-top: 1rem;
+  font-size: 1.2rem;
+  width: 100%;
+  border: 0;
+  box-sizing: content-box;
+  border-bottom: 1px $light-grey solid;
+  transition: border-color 0.2s;
+  z-index: 1;
+  background: transparent;
+  &:focus {
+    border-bottom: 2px $active-color solid;
+    padding-bottom: 1px;
+    outline: none;
+  }
+}
+
+.form__submit {
+  @include sans-serif;
+  width: 100%;
+  font-size: 1.2rem;
+  padding: 8px;
+  border: 0;
+  background-color: $primary-action-color;
+  color: $light-color;
+  transition: background-color 0.3s;
+  &:hover, &:focus {
+    background-color: $primary-action-color--active;
+    outline: none;
+  }
+}

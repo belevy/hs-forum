@@ -1,12 +1,18 @@
 module Main exposing (..)
 
 import Browser exposing (Document, UrlRequest)
-import Browser.Events
 import Browser.Navigation
-import Element exposing (..)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Input as Input
+import Html exposing (..)
+import Html.Attributes
+    exposing
+        ( class
+        , classList
+        , for
+        , name
+        , type_
+        , value
+        )
+import Html.Events exposing (..)
 import Http
 import Json.Encode as Encode
 import Url exposing (Url)
@@ -16,7 +22,6 @@ type alias Model =
     { username : String
     , password : String
     , navKey : Browser.Navigation.Key
-    , device : Device
     }
 
 
@@ -24,7 +29,6 @@ initialModel flags navKey =
     { username = ""
     , password = ""
     , navKey = navKey
-    , device = classifyDevice flags.window
     }
 
 
@@ -41,7 +45,6 @@ type Msg
     | PasswordUpdated String
     | FormSubmitted
     | SessionCreateResponse (Result Http.Error ())
-    | BrowserResized Int Int
 
 
 type alias WindowObject =
@@ -124,53 +127,67 @@ update msg model =
         SessionCreateResponse res ->
             ( model, Cmd.none )
 
-        BrowserResized width height ->
-            ( { model | device = classifyDevice { width = width, height = height } }
-            , Cmd.none
-            )
-
 
 view : Model -> Document Msg
 view model =
     { title = "Title"
     , body =
-        [ Element.layout [ width fill, height fill ] <|
-            el
-                [ width (px 320)
-                , padding 32
-                , Border.shadow
-                    { offset = ( 2, 2 )
-                    , size = 3
-                    , blur = 3
-                    , color = rgba 0 0 0 0.3
-                    }
-                , centerX
-                , centerY
-                ]
-            <|
-                column [ width fill, spacing 16 ]
-                    [ Input.username [ width fill ]
-                        { onChange = UsernameUpdated
-                        , text = model.username
-                        , placeholder = Nothing
-                        , label = Input.labelAbove [] <| text "Username"
-                        }
-                    , Input.currentPassword [ width fill ]
-                        { onChange = PasswordUpdated
-                        , text = model.password
-                        , placeholder = Nothing
-                        , label = Input.labelAbove [] <| text "Password"
-                        , show = False
-                        }
-                    , Input.button [ width fill, Background.color (rgb255 0x33 0x88 0xCD), padding 12 ]
-                        { onPress = Just FormSubmitted
-                        , label = el [ centerX ] <| text "Login"
-                        }
+        [ div [ class "flex" ]
+            [ div [ class "centered card" ]
+                [ div [ class "card__header" ]
+                    [ text "Login" ]
+                , div [ class "card__body" ]
+                    [ form [ class "form flex--vertical" ]
+                        [ fieldset
+                            [ classList
+                                [ ( "form__fieldset", True )
+                                , ( "form__fieldset--label-above", True )
+                                , ( "form__fieldset--active", model.username /= "" )
+                                ]
+                            ]
+                            [ label
+                                [ for "username"
+                                , class "form__fieldset__label"
+                                ]
+                                [ text "Username" ]
+                            , input
+                                [ name "username"
+                                , class "form__fieldset__input"
+                                , onInput UsernameUpdated
+                                , value model.username
+                                ]
+                                []
+                            ]
+                        , fieldset
+                            [ classList
+                                [ ( "form__fieldset", True )
+                                , ( "form__fieldset--label-above", True )
+                                , ( "form__fieldset--active", model.password /= "" )
+                                ]
+                            ]
+                            [ label
+                                [ for "password"
+                                , class "form__fieldset__label"
+                                ]
+                                [ text "Password" ]
+                            , input
+                                [ name "password"
+                                , type_ "password"
+                                , class "form__fieldset__input"
+                                , onInput PasswordUpdated
+                                , value model.password
+                                ]
+                                []
+                            ]
+                        , button [ class "form__submit" ] [ text "Submit" ]
+                        ]
                     ]
+                ]
+            ]
         ]
     }
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Browser.Events.onResize BrowserResized
+    Sub.none
