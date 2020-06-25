@@ -22,16 +22,20 @@ type alias Model =
     { username : String
     , password : String
     , navKey : Browser.Navigation.Key
+    , session : Maybe String
     }
 
 
+initialModel : Flags -> Browser.Navigation.Key -> Model
 initialModel flags navKey =
     { username = ""
     , password = ""
     , navKey = navKey
+    , session = Nothing
     }
 
 
+init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url navKey =
     ( initialModel flags navKey
     , Cmd.none
@@ -47,15 +51,8 @@ type Msg
     | SessionCreateResponse (Result Http.Error ())
 
 
-type alias WindowObject =
-    { height : Int
-    , width : Int
-    }
-
-
 type alias Flags =
-    { window : WindowObject
-    }
+    {}
 
 
 main : Program Flags Model Msg
@@ -125,23 +122,22 @@ update msg model =
             )
 
         SessionCreateResponse res ->
-            ( model, Cmd.none )
+            ( { model | username = "", password = "", session = Just "a session" }, Cmd.none )
 
 
 view : Model -> Document Msg
 view model =
     { title = "Title"
     , body =
-        [ div [ class "flex" ]
+        [ div [ class "flex bg-light no-padding" ]
             [ div [ class "centered card" ]
                 [ div [ class "card__header" ]
                     [ text "Login" ]
                 , div [ class "card__body" ]
-                    [ form [ class "form flex--vertical" ]
+                    [ form [ class "form flex--vertical", onSubmit FormSubmitted ]
                         [ fieldset
                             [ classList
                                 [ ( "form__fieldset", True )
-                                , ( "form__fieldset--label-above", True )
                                 , ( "form__fieldset--active", model.username /= "" )
                                 ]
                             ]
@@ -161,7 +157,6 @@ view model =
                         , fieldset
                             [ classList
                                 [ ( "form__fieldset", True )
-                                , ( "form__fieldset--label-above", True )
                                 , ( "form__fieldset--active", model.password /= "" )
                                 ]
                             ]

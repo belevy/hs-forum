@@ -1,7 +1,8 @@
 @import '~@styles/variables/fonts';
-@import '~@styles/utilities/flex';
+@import '~@styles/utilities/layout';
 
 .card {
+  background-color: #fff;
   border-radius: 3px;
   min-width: 256px;
   box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);

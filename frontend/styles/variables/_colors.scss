@@ -1,6 +1,13 @@
+$light-blue: #eef5f8;
+$blue: #87cadd;
+$orange: #d38117;
+$light-brown: #996224;
+$brown: #614321;
 $light-grey: #ccc;
 $dark-grey: #a1a1a1;
-$active-color: #93E1D8;
-$primary-action-color: #462255;
-$primary-action-color--active: lighten($primary-action-color, 10%);
-$light-color: #DDFFF7;
+$black: #262626;
+
+$focus-color: $blue;
+$primary-action-color: $brown;
+$primary-action-color--active: $light-brown;
+$light-color: $light-blue;

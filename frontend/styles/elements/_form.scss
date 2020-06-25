@@ -13,12 +13,6 @@
   height: 2.4rem;
 }
 
-.form__fieldset--label-above {
-  display: flex;
-  flex-direction: column;
-  padding-bottom: 4px;
-}
-
 .form__fieldset__label {
   font-size: 1.2rem;
   top: .8rem;
@@ -33,7 +27,7 @@
   top: -.1rem;
 }
 .form__fieldset:focus-within .form__fieldset__label {
-  color: $active-color;
+  color: $focus-color;
 }
 
 .form__fieldset__input {
@@ -44,10 +38,11 @@
   box-sizing: content-box;
   border-bottom: 1px $light-grey solid;
   transition: border-color 0.2s;
+  position: relative;
   z-index: 1;
   background: transparent;
   &:focus {
-    border-bottom: 2px $active-color solid;
+    border-bottom: 2px $focus-color solid;
     padding-bottom: 1px;
     outline: none;
   }
@@ -62,6 +57,7 @@
   background-color: $primary-action-color;
   color: $light-color;
   transition: background-color 0.3s;
+  cursor: pointer;
   &:hover, &:focus {
     background-color: $primary-action-color--active;
     outline: none;
