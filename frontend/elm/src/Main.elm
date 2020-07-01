@@ -1,11 +1,12 @@
 module Main exposing (..)
 
 import Browser exposing (Document, UrlRequest)
-import Browser.Navigation
+import Browser.Navigation as Navigation
 import Html exposing (..)
 import Html.Attributes
     exposing
-        ( class
+        ( attribute
+        , class
         , classList
         , for
         , name
@@ -15,18 +16,20 @@ import Html.Attributes
 import Html.Events exposing (..)
 import Http
 import Json.Encode as Encode
+import Svg exposing (g, path, svg)
+import Svg.Attributes as Svg exposing (d, viewBox)
 import Url exposing (Url)
 
 
 type alias Model =
     { username : String
     , password : String
-    , navKey : Browser.Navigation.Key
+    , navKey : Navigation.Key
     , session : Maybe String
     }
 
 
-initialModel : Flags -> Browser.Navigation.Key -> Model
+initialModel : Flags -> Navigation.Key -> Model
 initialModel flags navKey =
     { username = ""
     , password = ""
@@ -35,7 +38,7 @@ initialModel flags navKey =
     }
 
 
-init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+init : Flags -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init flags url navKey =
     ( initialModel flags navKey
     , Cmd.none
@@ -49,6 +52,7 @@ type Msg
     | PasswordUpdated String
     | FormSubmitted
     | SessionCreateResponse (Result Http.Error ())
+    | NavigateBack
 
 
 type alias Flags =
@@ -124,13 +128,25 @@ update msg model =
         SessionCreateResponse res ->
             ( { model | username = "", password = "", session = Just "a session" }, Cmd.none )
 
+        NavigateBack ->
+            ( model, Navigation.back model.navKey 1 )
+
+
+viewBackArrow =
+    svg [ Svg.class "back-arrow", viewBox "0 0 24 24", attribute "xmlns" "http://www.w3.org/2000/svg" ]
+        [ path
+            [ d "M19 11H7.14l3.63-4.36a1 1 0 1 0-1.54-1.28l-5 6a1.19 1.19 0 0 0-.09.15c0 .05 0 .08-.07.13A1 1 0 0 0 4 12a1 1 0 0 0 .07.36c0 .05 0 .08.07.13a1.19 1.19 0 0 0 .09.15l5 6A1 1 0 0 0 10 19a1 1 0 0 0 .64-.23 1 1 0 0 0 .13-1.41L7.14 13H19a1 1 0 0 0 0-2z" ]
+            []
+        ]
+
 
 view : Model -> Document Msg
 view model =
     { title = "Title"
     , body =
         [ div [ class "flex bg-light no-padding" ]
-            [ div [ class "centered card" ]
+            [ a [ class "icon-link", onClick NavigateBack ] [ viewBackArrow ]
+            , div [ class "centered card card--sm" ]
                 [ div [ class "card__header" ]
                     [ text "Login" ]
                 , div [ class "card__body" ]

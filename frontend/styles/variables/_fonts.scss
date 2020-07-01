@@ -1,3 +1,21 @@
 @mixin sans-serif {
   font-family: sans-serif;
 }
+
+@mixin font-size($sz) {
+  @if $sz == xs {
+    font-size: .75rem;
+  }
+  @else if $sz == sm {
+    font-size: 1rem;
+  }
+  @else if $sz == md {
+    font-size: 1.2rem;
+  }
+  @else if $sz == lg {
+    font-size: 1.5rem;
+  }
+  @else if $sz == xl {
+    font-size: 2rem;
+  }
+}

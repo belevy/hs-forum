@@ -9,6 +9,7 @@ import Data.Aeson (defaultOptions, fieldLabelModifier, camelTo2)
 import Data.Aeson.TH (deriveToJSON)
 import qualified Data.Text as T
 import Data.Int
+import Web.Obfuscate
 
 import Env
   
@@ -18,6 +19,23 @@ data PaginatedResponse a = PaginatedResponse
   , paginatedPageSize :: Int64
   , paginatedData :: [a]
   }
+
+instance Obfuscateable a => Obfuscateable (PaginatedResponse a) where
+  type Obfuscated (PaginatedResponse a) = PaginatedResponse (Obfuscated a)
+  obfuscate ctx response = PaginatedResponse
+    { paginatedTotalCount = paginatedTotalCount response
+    , paginatedCurrentPage = paginatedCurrentPage response
+    , paginatedPageSize = paginatedPageSize response
+    , paginatedData = obfuscate ctx $ paginatedData response
+    }
+  deobfuscate ctx response = do
+    deobfuscatedData <- deobfuscate ctx $ paginatedData response
+    pure $ PaginatedResponse 
+      { paginatedTotalCount = paginatedTotalCount response
+      , paginatedCurrentPage = paginatedCurrentPage response
+      , paginatedPageSize = paginatedPageSize response
+      , paginatedData = deobfuscatedData
+      }
 
 toPaginatedResponse :: Int64
                     -> Int64

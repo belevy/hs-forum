@@ -1,7 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DefaultSignatures #-}
 
 module Web.Obfuscate where
 
+import Data.Tagged
 import Data.Kind
 import Text.Read (readMaybe)
 import Data.Typeable (Typeable)
@@ -21,11 +23,45 @@ import Network.HTTP.Types (hContentType, hAccept, Method, Status, HeaderName)
 import Network.Wai (lazyRequestBody,responseLBS, requestHeaders)
 import Database.Persist
 import Database.Persist.Sql
-import Data.Aeson (fromJSON, Result(..), Value(..), ToJSON(..), FromJSON(..))
+import Data.Aeson 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import Data.Scientific (isInteger, toBoundedInteger)
 import Data.HashMap.Strict (mapWithKey)
+import qualified Data.HashMap.Strict as HashMap
+
+class Obfuscateable a where
+  type Obfuscated a
+  obfuscate :: H.HashidsContext -> a -> Obfuscated a
+  deobfuscate :: H.HashidsContext -> Obfuscated a -> Maybe a
+
+instance Obfuscateable a => Obfuscateable [a] where
+  type Obfuscated [a] = [Obfuscated a] 
+  obfuscate ctx xs = fmap (obfuscate ctx) xs
+  deobfuscate ctx ys = traverse (deobfuscate ctx) ys
+
+instance Obfuscateable Integer where
+  type Obfuscated Integer = T.Text
+  obfuscate ctx i = T.pack $ H.encode ctx [i]
+  deobfuscate ctx r = Maybe.listToMaybe $ H.decode ctx $ T.unpack r
+
+instance Obfuscateable Int where
+  type Obfuscated Int = T.Text
+
+  obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral i]
+  deobfuscate ctx r = fromIntegral <$> (Maybe.listToMaybe $ H.decode ctx $ T.unpack r)
+
+instance Obfuscateable Int64 where
+  type Obfuscated Int64 = T.Text
+
+  obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral i]
+  deobfuscate ctx r = fromIntegral <$> (Maybe.listToMaybe $ H.decode ctx $ T.unpack r)
+
+instance (ToBackendKey SqlBackend e) => Obfuscateable (Key e) where
+  type Obfuscated (Key e) = T.Text
+
+  obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral $ fromSqlKey i]
+  deobfuscate ctx r = (toSqlKey . fromIntegral) <$> (Maybe.listToMaybe $ H.decode ctx $ T.unpack r)
 
 data ObfuscatedCapture (sym :: Symbol) (a :: Type) 
   deriving (Typeable)
@@ -102,45 +138,27 @@ instance (ctypes ~ '[JSON], FromJSON a, HasContextEntry context H.HashidsContext
             Right (Error e)   -> delayedFailFatal err400 { errBody = cs e }
             Right (Success v) -> return v
 
-type ObfuscatedGet   = ObfuscatedVerb GET   200
-type ObfuscatedPost  = ObfuscatedVerb POST  200
-type ObfuscatedPut   = ObfuscatedVerb PUT   200
-type ObfuscatedPatch = ObfuscatedVerb PATCH 200
+data ObfuscatedVerb (method :: StdMethod) (status :: Nat) (ctypes :: [*]) (a :: *)
+  deriving Typeable
 
-data ObfuscatedVerb (method :: StdMethod) (status :: Nat) (ctypes :: [Type]) (a :: Type)
-  deriving (Typeable)
-
-instance {-# OVERLAPPABLE #-}
-         ( ToJSON a, HasContextEntry context H.HashidsContext, ReflectMethod method, KnownNat status
-         ) => HasServer (ObfuscatedVerb method status '[JSON] a) context where
-
-  type ServerT (ObfuscatedVerb method status '[JSON] a) m = m a
+instance ( AllCTRender ctypes (Obfuscated a)
+         , Obfuscateable a
+         , ToJSON (Obfuscated a)
+         , HasContextEntry context H.HashidsContext
+         , ReflectMethod method
+         , KnownNat status
+         ) => HasServer (ObfuscatedVerb method status ctypes a) context where
+  type ServerT (ObfuscatedVerb method status ctypes a) m = ServerT (Verb method status ctypes a) m
   hoistServerWithContext _ _ nt s = nt s
+  route Proxy context = methodRouter obfuscateBody method (Proxy :: Proxy ctypes) status
+        where method = reflectMethod (Proxy :: Proxy method)
+              status = toEnum . fromInteger $ natVal (Proxy :: Proxy status)
+              obfuscateBody b = ([], obfuscate (getContextEntry context) b)
 
-  route Proxy context = obfuscatedMethodRouter (getContextEntry context) ((,)[]) method (Proxy :: Proxy '[JSON]) status
-      where method = reflectMethod (Proxy :: Proxy method)
-            status = toEnum . fromInteger $ natVal (Proxy :: Proxy status)
-
-obfuscatedMethodRouter :: (ToJSON a) 
-                       => H.HashidsContext
-                       -> (b -> ([(HeaderName, B.ByteString)], a))
-                       -> Method -> Proxy '[JSON] -> Status
-                       -> Delayed env (Handler b)
-                       -> Router env
-obfuscatedMethodRouter hashidsContext splitHeaders method proxy status action = leafRouter route'
-  where
-    route' env request respond =
-          let accH = Maybe.fromMaybe ct_wildcard $ lookup hAccept $ requestHeaders request
-          in runAction (action `addMethodCheck` methodCheck method request
-                               `addAcceptCheck` acceptCheck proxy accH
-                       ) env request respond $ \ output -> do
-               let (headers, b) = splitHeaders output
-               case handleAcceptH proxy (AcceptHeader accH) (encodeIdFields hashidsContext b) of
-                 Nothing -> FailFatal err406 -- this should not happen (checked before), so we make it fatal if it does
-                 Just (contentT, body) ->
-                      let bdy = if allowedMethodHead method request then "" else body
-                      in Route $ responseLBS status ((hContentType, cs contentT) : headers) bdy
-
+type ObfuscatedGet   = ObfuscatedVerb GET   200 
+type ObfuscatedPost  = ObfuscatedVerb POST  200
+type ObfuscatedPut   = ObfuscatedVerb PUT   200 
+type ObfuscatedPatch = ObfuscatedVerb PATCH 200 
 
 decodeIdFields :: FromJSON a => H.HashidsContext -> Value -> Result a
 decodeIdFields ctx = fromJSON . go
@@ -169,35 +187,3 @@ decodeIdFields ctx = fromJSON . go
       pure $ toJSON i
 
   go val = val
-
-encodeIdFields :: ToJSON a => H.HashidsContext -> a -> Value
-encodeIdFields ctx = (go False) . toJSON
-  where
-  go _ (Object oMap) = Object $ flip mapWithKey oMap $ \fieldName fieldValue -> 
-      case fieldValue of
-        v@(Object _) -> 
-          go False v
-        v@(Array a) -> 
-          go ("ids" `T.isSuffixOf` fieldName) v
-        v@(Number n) -> 
-          if "id" `T.isSuffixOf` fieldName then 
-            go False v
-          else 
-            v
-        v -> v
-
-  go skip val@(Array a) = Array $ fmap (go skip) a
-
-  go skip val@(Number n) 
-    | skip = val
-    | not $ isInteger n = val
-    | otherwise = res
-    where
-      res = 
-        Maybe.fromMaybe val $ do 
-          i <- toInteger <$> toBoundedInteger @Int64 n
-          let encoded = H.encode ctx [i]
-          pure $ String $ cs encoded
-
-  go _ val = val
-

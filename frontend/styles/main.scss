@@ -5,4 +5,22 @@
 @import 'elements/card';
 @import 'elements/form';
 
+.back-arrow {
+  width: 2rem;
+  height: auto;
+  position: absolute;
+  top: 16px;
+  left: 16px;
+}
 
+.icon-link {
+  cursor: pointer;
+  color: $black;
+  transition: color 0.2s;
+  &:hover {
+    color: $dark-grey;
+  }
+  svg {
+    fill: currentColor;
+  }
+}

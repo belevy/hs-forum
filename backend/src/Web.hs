@@ -1,4 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Web where
 
@@ -11,6 +14,8 @@ import qualified Web.Endpoint.Forum as Forum
 import qualified Web.Endpoint.Session as Session
 import Web.Auth
 import Hashids
+import Data.Aeson
+import Web.Obfuscate
 
 type Api = Session.Api 
      :<|> Forum.Api

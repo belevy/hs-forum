@@ -1,9 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Web.Endpoint.Forum
-  ( Api
-  , server
-  ) where
+module Web.Endpoint.Forum 
+  where
 
 import Servant
 import Data.Aeson
@@ -40,6 +38,7 @@ type Api = Protected :> "forums" :>
            :> ObfuscatedGet '[JSON] (PaginatedResponse ForumPostResponse)
       )
 
+
 data ForumResponse = ForumResponse
   { frForumId :: ForumId
   , frName :: Text
@@ -48,10 +47,56 @@ data ForumResponse = ForumResponse
   , frAdministrators :: [ForumAdministrator]
   }
 
+data ObfuscatedForumResponse = ObfuscatedForumResponse 
+  { ofrForumId :: Obfuscated ForumId
+  , ofrName :: Text
+  , ofrDescription :: Text
+  , ofrCreator :: Obfuscated ForumAdministrator
+  , ofrAdministrators :: Obfuscated [ForumAdministrator]
+  }
+
+instance Obfuscateable ForumResponse where
+  type Obfuscated ForumResponse = ObfuscatedForumResponse
+  obfuscate ctx response = ObfuscatedForumResponse
+    { ofrForumId = obfuscate ctx $ frForumId response
+    , ofrName = frName response 
+    , ofrDescription = frDescription response
+    , ofrCreator = obfuscate ctx $ frCreator response
+    , ofrAdministrators = obfuscate ctx $ frAdministrators response 
+    }
+  deobfuscate ctx response = do
+    forumId <- deobfuscate ctx $ ofrForumId response
+    creator <- deobfuscate ctx $ ofrCreator response
+    admins <- deobfuscate ctx $ ofrAdministrators response 
+    pure $ ForumResponse
+      { frForumId = forumId
+      , frName = ofrName response 
+      , frDescription = ofrDescription response
+      , frCreator = creator
+      , frAdministrators = admins
+      }
+    
 data ForumAdministrator = ForumAdministrator
   { faUserId :: UserId
   , faUserName :: Text
   }
+data ObfuscatedForumAdministrator = ObfuscatedForumAdministrator
+  { ofaUserId :: Obfuscated UserId
+  , ofaUserName :: Text
+  }
+
+instance Obfuscateable ForumAdministrator where
+  type Obfuscated ForumAdministrator = ObfuscatedForumAdministrator
+  obfuscate ctx response = ObfuscatedForumAdministrator
+    { ofaUserId = obfuscate ctx $ faUserId response
+    , ofaUserName = faUserName response
+    }
+  deobfuscate ctx response = do 
+    userId <- deobfuscate ctx $ ofaUserId response
+    pure $ ForumAdministrator
+      { faUserId = userId
+      , faUserName = ofaUserName response
+      }
 
 data ForumPostResponse = ForumPostResponse
   { fprForumPostId :: ForumPostId
@@ -59,6 +104,29 @@ data ForumPostResponse = ForumPostResponse
   , fprSortOrder :: Int
   , fprCreated :: UTCTime
   }
+
+data ObfuscatedForumPostResponse = ObfuscatedForumPostResponse
+  { ofprForumPostId :: Obfuscated ForumPostId
+  , ofprContent :: Text
+  , ofprSortOrder :: Int
+  , ofprCreated :: UTCTime
+  }
+instance Obfuscateable ForumPostResponse where
+  type Obfuscated ForumPostResponse = ObfuscatedForumPostResponse
+  obfuscate ctx response = ObfuscatedForumPostResponse
+      { ofprForumPostId = obfuscate ctx $ fprForumPostId response
+      , ofprContent = fprContent response 
+      , ofprSortOrder = fprSortOrder response 
+      , ofprCreated = fprCreated response 
+      }
+  deobfuscate ctx response = do 
+    forumPostId <- deobfuscate ctx $ ofprForumPostId response
+    pure $ ForumPostResponse
+      { fprForumPostId= forumPostId 
+      , fprContent = ofprContent response 
+      , fprSortOrder = ofprSortOrder response 
+      , fprCreated = ofprCreated response 
+      }
 
 server :: AppServer Api
 server _session = listForums :<|> getForum  :<|> getForumPosts
@@ -116,6 +184,6 @@ forumToResponse (Entity forumId forum, creator, admins) =
     , frAdministrators = fmap userToForumAdministrator admins
     }
 
-$(deriveToJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "fa")} 'ForumAdministrator)
-$(deriveToJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "fr")} 'ForumResponse)
-$(deriveToJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "fpr")} 'ForumPostResponse)
+$(deriveToJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "ofa")} 'ObfuscatedForumAdministrator)
+$(deriveToJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "ofr")} 'ObfuscatedForumResponse)
+$(deriveToJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "ofpr")} 'ObfuscatedForumPostResponse)

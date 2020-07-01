@@ -38,7 +38,7 @@ endef
 dev: .dev-docker-image-built
 	$(call dev-docker-up)
 
-repl: .dev-docker-image-built	
+repl: .dev-docker-image-built
 	$(call dev-docker-up, stack ghci --allow-different-user)
 
 clean:

@@ -10,12 +10,12 @@
   position: relative;
   padding: 0;
   margin-bottom: 1rem;
-  height: 2.4rem;
+  height: 3rem
 }
 
 .form__fieldset__label {
-  font-size: 1.2rem;
-  top: .8rem;
+  @include font-size(md);
+  top: 1rem;
   position: absolute;
   transition: top 0.3s, font-size 0.3s, color 0.3s;
   color: $dark-grey;
@@ -23,19 +23,20 @@
 
 .form__fieldset:focus-within .form__fieldset__label,
 .form__fieldset--active .form__fieldset__label {
-  font-size: 1rem;
-  top: -.1rem;
+  @include font-size(sm);
+  top: 0;
 }
+
 .form__fieldset:focus-within .form__fieldset__label {
   color: $focus-color;
 }
 
 .form__fieldset__input {
-  padding-top: 1rem;
-  font-size: 1.2rem;
+  @include font-size(md);
+  padding-top: 1.3rem;
+  min-width: 80px;
   width: 100%;
   border: 0;
-  box-sizing: content-box;
   border-bottom: 1px $light-grey solid;
   transition: border-color 0.2s;
   position: relative;
@@ -50,9 +51,9 @@
 
 .form__submit {
   @include sans-serif;
+  @include font-size(lg);
   width: 100%;
-  font-size: 1.2rem;
-  padding: 8px;
+  padding: .5rem;
   border: 0;
   background-color: $primary-action-color;
   color: $light-color;

@@ -45,11 +45,13 @@ dependencies:
 - servant
 - servant-server
 - string-conversions
+- tagged
 - text
 - time
 - transformers
 - unliftio
 - unordered-containers
+- vector
 - wai
 - warp
 - yaml

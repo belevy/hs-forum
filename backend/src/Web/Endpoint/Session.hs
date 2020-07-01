@@ -18,7 +18,7 @@ import Database.Persist (Entity(..))
 import Web.Cookie
 
 type Api = "sessions" :> 
-  (    Protected :> ObfuscatedGet '[JSON] SessionData
+  (    Protected :> Get '[JSON] SessionData
   :<|> ReqBody '[JSON] UserCredentials :> Post '[JSON] (Headers '[Header "set-cookie" SetCookie] ())
   )
 

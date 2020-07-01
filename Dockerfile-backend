@@ -9,6 +9,7 @@ RUN apt-get install -y curl
 RUN curl -sSL https://get.haskellstack.org/ | sh
 ENV PATH="/root/.local/bin:${PATH}"
 RUN stack setup --allow-different-user --resolver=$STACK_RESOLVER
+RUN stack build aeson --resolver=$STACK_RESOLVER
 COPY backend/stack.yaml .
 COPY backend/package.yaml .
 RUN stack build --only-dependencies
