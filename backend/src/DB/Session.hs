@@ -5,8 +5,8 @@ import DB.Model.User
 import Database.Redis as Redis
 import Data.Cookie
 import Web.Cookie
-import Data.SessionData (SessionData(..))
-import qualified Data.SessionData as SessionData
+import Domain.Types.SessionData (SessionData(..))
+import qualified Domain.Types.SessionData as SessionData
 
 fetchSession :: MonadIO m => Redis.Connection -> Token -> m (Maybe SessionData)
 fetchSession conn sessionKey = do

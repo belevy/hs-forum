@@ -6,8 +6,8 @@ import Network.Wai
 import Env
 import DB.Session
 import Web.Errors
-import Data.SessionData
 import Web.Cookie
+import Domain.Types.SessionData (SessionData(..))
   
 type Protected = AuthProtect "session-cookie"
 

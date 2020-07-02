@@ -6,7 +6,7 @@ DOCKER_FILE=Dockerfile-backend
 webroot/scripts/bundle.js: frontend/*
 	@cd frontend && npm run-script build
 
-.dev-docker-image-built: $(DOCKER_FILE) backend/*
+.dev-docker-image-built: $(DOCKER_FILE) backend/stack.yaml backend/package.yaml
 	@docker build . -f $(DOCKER_FILE) --target dev --tag hs-forum/dev:latest
 	@touch $@
 
@@ -41,5 +41,8 @@ dev: .dev-docker-image-built
 repl: .dev-docker-image-built
 	$(call dev-docker-up, stack ghci --allow-different-user)
 
-clean:
-	@rm .dev-docker-image-built .docker-image-built
+clean: stop
+	@docker container prune -f
+	@rm -f .dev-docker-image-built 
+	@rm -f .docker-image-built
+	@rm -f webroot/scripts/bundle.js

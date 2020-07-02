@@ -7,7 +7,7 @@ import Servant
 import Web.Auth
 import Web.Obfuscate
 import Web.AppHandler
-import Data.SessionData
+import Domain.Types.SessionData
 import DB.User
 import DB.Session
 import Data.UserCredentials
@@ -18,7 +18,7 @@ import Database.Persist (Entity(..))
 import Web.Cookie
 
 type Api = "sessions" :> 
-  (    Protected :> Get '[JSON] SessionData
+  (    Protected :> ObfuscatedGet '[JSON] SessionData
   :<|> ReqBody '[JSON] UserCredentials :> Post '[JSON] (Headers '[Header "set-cookie" SetCookie] ())
   )
 
