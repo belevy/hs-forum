@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Web.Endpoint.Forum 
+module Web.Endpoint.Forum
   where
 
 import Servant
@@ -28,22 +28,29 @@ import Domain.Types.ForumAdministrator as ForumAdministrator
 import Domain.Types.ForumPostResponse as ForumPostResponse
 import Domain.Types.ForumResponse as ForumResponse
 
-type Api = "forums" :> 
-      (    Protected
-           :> QueryParam "pageSize" Int64
-           :> QueryParam "page" Int64
-           :> ObfuscatedGet '[JSON] (PaginatedResponse ForumResponse)
-      :<|> Protected :> ObfuscatedCapture "forumId" ForumId :> ObfuscatedGet '[JSON] ForumResponse
-      :<|> Protected 
-           :> ObfuscatedCapture "forumId" ForumId
-           :> "posts"
-           :> QueryParam "pageSize" Int64
-           :> QueryParam "page" Int64
-           :> ObfuscatedGet '[JSON] (PaginatedResponse ForumPostResponse)
-      )
+type Api = "forums" :> (ListForums :<|> GetForum :<|> GetForumPosts)
+
+type ListForums
+        = Protected
+        :> QueryParam "pageSize" Int64
+        :> QueryParam "page" Int64
+        :> Obfuscate :> Get '[JSON] (PaginatedResponse ForumResponse)
+
+type GetForum
+        = Protected
+        :> Obfuscate :> Capture "forumId" ForumId
+        :> Obfuscate :> Get '[JSON] ForumResponse
+
+type GetForumPosts
+        = Protected
+        :> Obfuscate :> Capture "forumId" ForumId
+        :> "posts"
+        :> QueryParam "pageSize" Int64
+        :> QueryParam "page" Int64
+        :> Obfuscate :> Get '[JSON] (PaginatedResponse ForumPostResponse)
 
 server :: AppServer Api
-server = listForums :<|> getForum  :<|> getForumPosts
+server = listForums :<|> getForum :<|> getForumPosts
   where
     listForums :: SessionData
                -> Maybe Int64

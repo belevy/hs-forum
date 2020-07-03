@@ -1,4 +1,4 @@
-module Web.Endpoint.Session 
+module Web.Endpoint.Session
   ( Api
   , server
   ) where
@@ -16,19 +16,23 @@ import Control.Monad.Reader (asks)
 import Web.Errors
 import Database.Persist (Entity(..))
 import Web.Cookie
+import Web.Servant.Csrf
 
-type Api = "sessions" :> 
-  (    Protected :> ObfuscatedGet '[JSON] SessionData
-  :<|> ReqBody '[JSON] UserCredentials :> Post '[JSON] (Headers '[Header "set-cookie" SetCookie] ())
+type Api = "sessions" :>
+  (     Protected :> Obfuscate :> Get '[JSON] SessionData
+   :<|> ReqBody '[JSON] UserCredentials :> Post '[JSON] (Headers '[CSRFTokenCookie, Header "Set-Cookie" SetCookie] ())
   )
 
 server :: AppServer Api
 server = currentSession :<|> login
   where
+    currentSession :: SessionData -> AppHandler (SessionData)
     currentSession session = pure session
-    login creds = do 
+
+    login :: UserCredentials -> AppHandler (Headers '[CSRFTokenCookie, Header "Set-Cookie" SetCookie] ())
+    login creds = do
       conn <- asks redisConn
-      mUser <- runDB $ fetchAndVerifyUser creds 
+      mUser <- runDB $ fetchAndVerifyUser creds
       user <- maybeThrowError err403 mUser
       sessionCookie <- createSession conn (entityVal user) (60*60*24*30)
-      pure $ addHeader sessionCookie ()
+      addCsrfToken $ addHeader sessionCookie ()
