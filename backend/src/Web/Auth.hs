@@ -21,4 +21,5 @@ authHandler env = mkAuthHandler handler
     handler req = do
       cookies <- maybeThrowError err400 $ lookup "cookie" $ requestHeaders req
       sessionKey <- maybeUnauthorized $ lookup "hs-forum-session-key" $ parseCookies cookies 
-      maybeUnauthorized =<< fetchSession (redisConn env) (sessionKey)
+      session <- fetchSession (redisConn env) (sessionKey)
+      maybe (throwError err401{errBody="Session Not Found"}) pure session 

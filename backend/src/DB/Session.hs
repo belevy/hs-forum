@@ -6,6 +6,7 @@ import Database.Redis as Redis
 import Data.Cookie
 import Web.Cookie
 import Domain.Types.SessionData (SessionData(..))
+import Data.Time.Clock (getCurrentTime, addUTCTime)
 import qualified Domain.Types.SessionData as SessionData
 
 fetchSession :: MonadIO m => Redis.Connection -> Token -> m (Maybe SessionData)
@@ -16,10 +17,16 @@ fetchSession conn sessionKey = do
 createSession :: MonadIO m => Redis.Connection -> User -> Integer -> m SetCookie
 createSession conn user expiration = liftIO $ do
   sessionKey <- generateRandomToken
+  now <- getCurrentTime
   runRedis conn $ Redis.setex sessionKey expiration (SessionData.encode $ SessionData user)
   pure $ defaultSetCookie
       { setCookieName = "hs-forum-session-key"
+      , setCookiePath = Just "/api"
       , setCookieValue = sessionKey 
       , setCookieMaxAge = Just (fromIntegral expiration)
+      , setCookieExpires = Just $ addUTCTime (fromIntegral expiration) now
+      , setCookieHttpOnly = True
+      , setCookieSecure = True
+      , setCookieSameSite = Just sameSiteStrict
       }
 

@@ -19,6 +19,7 @@ csrfCookie token =
     { setCookieName = "csrf-token"
     , setCookieValue = token
     , setCookieMaxAge = Just thirtyMinutes
+    , setCookiePath = Just "/api"
     }
   where 
     thirtyMinutes =

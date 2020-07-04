@@ -69,6 +69,13 @@ instance (ToBackendKey SqlBackend e) => Obfuscateable (Key e) where
   obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral $ fromSqlKey i]
   deobfuscate ctx r = toSqlKey <$> deobfuscateIntegral ctx r
 
+instance Obfuscateable a => Obfuscateable (Headers ls a) where
+  type Obfuscated (Headers ls a) = Obfuscated a
+
+  obfuscate ctx (Headers a hlist)= obfuscate ctx a
+  deobfuscate ctx _ = undefined
+
+
 class HasObfuscatedServerImplementation api context where
   routeImpl :: Proxy api -> Context context -> Delayed env (Server api) -> Router env 
   hoistServerWithContextImpl :: Proxy api -> Proxy context -> (forall x. m x -> n x) -> ServerT api m -> ServerT api n 
