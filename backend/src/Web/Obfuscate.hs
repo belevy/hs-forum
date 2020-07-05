@@ -69,13 +69,6 @@ instance (ToBackendKey SqlBackend e) => Obfuscateable (Key e) where
   obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral $ fromSqlKey i]
   deobfuscate ctx r = toSqlKey <$> deobfuscateIntegral ctx r
 
-instance Obfuscateable a => Obfuscateable (Headers ls a) where
-  type Obfuscated (Headers ls a) = Obfuscated a
-
-  obfuscate ctx (Headers a hlist)= obfuscate ctx a
-  deobfuscate ctx _ = undefined
-
-
 class HasObfuscatedServerImplementation api context where
   routeImpl :: Proxy api -> Context context -> Delayed env (Server api) -> Router env 
   hoistServerWithContextImpl :: Proxy api -> Proxy context -> (forall x. m x -> n x) -> ServerT api m -> ServerT api n 
@@ -129,7 +122,8 @@ instance ( Obfuscateable a
             Right Nothing  -> delayedFailFatal err400 
             Right (Just v) -> return v
 
-instance ( ReflectMethod method, KnownNat status
+instance {-# OVERLAPPABLE #-}
+         ( ReflectMethod method, KnownNat status
          , HasContextEntry context H.HashidsContext
          , Obfuscateable a
          , AllCTRender ctypes (Obfuscated a)
@@ -138,6 +132,19 @@ instance ( ReflectMethod method, KnownNat status
 
   routeImpl Proxy ctx = 
     methodRouter (\x -> ([], obfuscate (getContextEntry ctx) x)) method (Proxy :: Proxy ctypes) status
+        where method = reflectMethod (Proxy :: Proxy method)
+              status = toEnum . fromInteger $ natVal (Proxy :: Proxy status)
+
+instance ( ReflectMethod method, KnownNat status
+         , HasContextEntry context H.HashidsContext
+         , Obfuscateable a
+         , AllCTRender ctypes (Obfuscated a)
+         , GetHeaders (Headers ls a)
+         ) => HasObfuscatedServerImplementation (Verb (method :: StdMethod) (status :: Nat) (ctypes :: [*]) (Headers ls a)) context where
+  hoistServerWithContextImpl _ _ nt s = nt s
+
+  routeImpl Proxy ctx = 
+    methodRouter (\x -> (getHeaders x, obfuscate (getContextEntry ctx) (getResponse x))) method (Proxy :: Proxy ctypes) status
         where method = reflectMethod (Proxy :: Proxy method)
               status = toEnum . fromInteger $ natVal (Proxy :: Proxy status)
 

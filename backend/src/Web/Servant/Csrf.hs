@@ -18,7 +18,6 @@ import Data.Cookie
 import Data.String (fromString)
 import qualified Data.Maybe as Maybe
 
-
 type CSRFTokenCookie = Header "Set-Cookie" SetCookie
 
 addCsrfToken :: (AddHeader "Set-Cookie" SetCookie a a', MonadIO m) => a -> m a'
@@ -29,11 +28,6 @@ addCsrfToken a = do
 type family WithCSRFToken a where
   WithCSRFToken (Headers headers a) = Headers (CSRFTokenCookie ': headers) a
   WithCSRFToken a = Headers '[CSRFTokenCookie] a
-
-type family CSRFProtected a 
-type instance CSRFProtected (a :> b) = a :> CSRFProtected b
-type instance CSRFProtected (a :<|> b) = CSRFProtected a :<|> CSRFProtected b 
-type instance CSRFProtected (Verb method status ctypes a) = Verb method status ctypes (WithCSRFToken a)
 
 data CheckCSRF 
   deriving Typeable

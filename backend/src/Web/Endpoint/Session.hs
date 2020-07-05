@@ -18,8 +18,8 @@ import Database.Persist (Entity(..))
 import Web.Cookie
 import Web.Servant.Csrf
 
-type Api = "sessions" :>
-  (     "me" :> Protected :> CheckCSRF :> Obfuscate :> Get '[JSON] (WithCSRFToken SessionData)
+type Api = "sessions" :> 
+  (     "me" :> CheckCSRF :> Protected :> Obfuscate :> Get '[JSON] (WithCSRFToken SessionData)
    :<|> ReqBody '[JSON] UserCredentials :> Post '[JSON] (Headers '[CSRFTokenCookie, Header "Set-Cookie" SetCookie] ())
   )
 
@@ -29,7 +29,7 @@ server = currentSession :<|> login
     currentSession :: SessionData -> AppHandler (WithCSRFToken SessionData)
     currentSession session = addCsrfToken session
 
-    login :: UserCredentials -> AppHandler (Headers '[CSRFTokenCookie, Header "Set-Cookie" SetCookie] ())
+    login :: UserCredentials -> AppHandler (WithCSRFToken (Headers '[Header "Set-Cookie" SetCookie] ()))
     login creds = do
       conn <- asks redisConn
       mUser <- runDB $ fetchAndVerifyUser creds

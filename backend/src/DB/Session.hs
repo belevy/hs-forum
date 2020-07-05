@@ -21,7 +21,7 @@ createSession conn user expiration = liftIO $ do
   runRedis conn $ Redis.setex sessionKey expiration (SessionData.encode $ SessionData user)
   pure $ defaultSetCookie
       { setCookieName = "hs-forum-session-key"
-      , setCookiePath = Just "/api"
+      , setCookiePath = Just "/"
       , setCookieValue = sessionKey 
       , setCookieMaxAge = Just (fromIntegral expiration)
       , setCookieExpires = Just $ addUTCTime (fromIntegral expiration) now
