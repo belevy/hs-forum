@@ -7,7 +7,7 @@ import Servant
 import Web.Auth
 import Web.Obfuscate
 import Web.AppHandler
-import Domain.Types.SessionData
+import Domain.Types.SessionData as Session
 import DB.User
 import DB.Session
 import Data.UserCredentials
@@ -19,15 +19,19 @@ import Web.Cookie
 import Web.Servant.Csrf
 
 type Api = "sessions" :> 
-  (     "me" :> CheckCSRF :> Protected :> Obfuscate :> Get '[JSON] (WithCSRFToken SessionData)
+  (     "me" :> Protected :> Get '[JSON] (WithCSRFToken SessionResponse)
+   :<|> "csrf-token" :> Protected :> Get '[JSON] (WithCSRFToken ())
    :<|> ReqBody '[JSON] UserCredentials :> Post '[JSON] (Headers '[CSRFTokenCookie, Header "Set-Cookie" SetCookie] ())
   )
 
 server :: AppServer Api
-server = currentSession :<|> login
+server = currentSession :<|> getCsrfToken :<|> login
   where
-    currentSession :: SessionData -> AppHandler (WithCSRFToken SessionData)
-    currentSession session = addCsrfToken session
+    currentSession :: SessionData -> AppHandler (WithCSRFToken SessionResponse)
+    currentSession session = addCsrfToken $ Session.fromModel session
+  
+    getCsrfToken :: SessionData -> AppHandler (WithCSRFToken ())
+    getCsrfToken _ = addCsrfToken ()
 
     login :: UserCredentials -> AppHandler (WithCSRFToken (Headers '[Header "Set-Cookie" SetCookie] ()))
     login creds = do

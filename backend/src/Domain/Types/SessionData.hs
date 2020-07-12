@@ -12,10 +12,14 @@ import Web.Obfuscate
 data SessionData = SessionData 
   { sessionUser :: User }
 
-instance Obfuscateable SessionData where
-  type Obfuscated SessionData = SessionData
-  obfuscate _ x = x
-  deobfuscate _ = Just 
+data SessionResponse = SessionResponse
+  { srUserName :: T.Text
+  }
+
+fromModel :: SessionData -> SessionResponse
+fromModel session = SessionResponse
+  { srUserName = userUserName $ sessionUser session
+  }
 
 encode :: SessionData -> BS.ByteString
 encode = LBS.toStrict . A.encode 
@@ -24,3 +28,4 @@ decode :: BS.ByteString -> Maybe SessionData
 decode = A.decodeStrict
 
 $(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "session")} 'SessionData)
+$(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "sr")} 'SessionResponse)

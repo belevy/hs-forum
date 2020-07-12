@@ -1,3 +1,7 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
 module DB.Forum
   where
 
@@ -6,6 +10,9 @@ import Control.Monad.IO.Class
 import qualified Data.Maybe as Maybe
 import Data.Int
 import Database.Esqueleto.Extended
+import qualified Data.Text as T
+import Data.Time.Clock
+import UnliftIO (handle, SomeException(..), Exception(..), throwIO, MonadUnliftIO)
 
 import DB.Model.Forum
 import DB.Model.ForumPost
@@ -14,6 +21,7 @@ import DB.Model.UserRole
 import DB.Model.RoleType
 import DB.Model.Vote
 import DB.QueryCombinators
+import DB.User
 
 type ForumResult = (Entity Forum, Entity User, [Entity User])
 
@@ -84,3 +92,43 @@ topPostsQuery = do
   let voteTotal = coalesceDefault [sum_ (votes ?. VoteValue)] (val 0)
   orderBy [desc voteTotal]
   pure (forum, posts, users, voteTotal)
+
+data CreateForumData = CreateForumData
+  { cfdUser :: User
+  , cfdForumName :: T.Text
+  , cfdForumDescription :: T.Text
+  , cfdForumAdministrators :: [UserId]
+  }
+
+data ForumCreationError 
+  = CreatorNotFound
+  | FailedToInsertForum
+  | FailedToInsertAdministrator
+  deriving (Show)
+  deriving anyclass (Exception)
+
+createForum :: MonadUnliftIO m => CreateForumData -> SqlPersistT m ForumId
+createForum CreateForumData{..} = do
+  now <- liftIO getCurrentTime
+  creator <- (maybe (throwIO CreatorNotFound) pure) =<< fetchUserByUsername (userUserName cfdUser)
+  forumId <- insertOrThrow FailedToInsertForum $ 
+    Forum
+      { forumName = cfdForumName
+      , forumDescription = cfdForumDescription
+      , forumCreator = entityKey creator
+      , forumCreatedAt = now
+      , forumUpdatedAt = Nothing
+      , forumDeletedAt = Nothing
+      }
+  forM_ cfdForumAdministrators $ \userId -> 
+    insertOrThrow FailedToInsertAdministrator $ 
+      UserRole 
+        { userRoleUserId = userId
+        , userRoleForumId = forumId 
+        , userRoleRoleType = Administrator
+        }
+  pure forumId
+
+  where
+    insertOrThrow err r =
+      handle (\(SomeException _) -> throwIO err) $ insert r

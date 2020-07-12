@@ -46,6 +46,7 @@ instance Obfuscateable ForumPostResponse where
       }
 
 type DBModel = (Entity ForumPost, Entity User, E.Value Int) 
+
 fromModel :: DBModel -> ForumPostResponse
 fromModel (post, author, votes) =
   ForumPostResponse
@@ -54,4 +55,5 @@ fromModel (post, author, votes) =
     , fprSortOrder = unValue votes
     , fprCreated = forumPostCreatedAt $ entityVal post
     }
+
 $(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "ofpr")} 'ObfuscatedForumPostResponse)
