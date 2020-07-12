@@ -54,6 +54,7 @@ type GetForumPosts
 
 type CreateForum
         = Protected
+        :> CheckCSRF
         :> Obfuscate :> ReqBody '[JSON] CreateForumRequest
         :> Obfuscate :> Post '[JSON] (WithCSRFToken ForumResponse)
 
