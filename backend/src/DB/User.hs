@@ -1,6 +1,8 @@
+{-# LANGUAGE DeriveAnyClass #-}
 module DB.User where
 
 import Control.Monad.IO.Class (MonadIO)
+import Control.Exception (Exception)
 import Control.Monad.Except
 import Database.Esqueleto.Extended
 import Data.Text (Text)
@@ -13,6 +15,8 @@ data UserRegistrationError
   = UserAlreadyExists
   | BcryptFailure
   | DatabaseFailed
+  deriving Show
+  deriving anyclass Exception
 
 registerUser :: MonadIO m => UserCredentials -> SqlPersistT m (Either UserRegistrationError (Entity User))
 registerUser credentials = runExceptT $ do

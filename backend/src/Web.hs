@@ -12,16 +12,18 @@ import Env
 import Web.AppHandler
 import qualified Web.Endpoint.Forum as Forum
 import qualified Web.Endpoint.Session as Session
+import qualified Web.Endpoint.User as User
 import Web.Auth
 import Hashids
 import Data.Aeson
 import Web.Obfuscate
 
 type Api = Session.Api 
-     :<|> Forum.Api
+      :<|> Forum.Api
+      :<|> User.Api
 
 server :: AppServer Api 
-server = Session.server :<|> Forum.server
+server = Session.server :<|> Forum.server :<|> User.server
 
 api :: Proxy Api
 api = Proxy

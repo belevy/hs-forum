@@ -1,7 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 module DB.Model.UserRole where
 
+import GHC.Generics
 import Database.Persist
 import Database.Persist.TH
 import Database.Persist.Sql
@@ -14,5 +18,8 @@ share [mkPersist sqlSettings] [persistLowerCase|
     userId UserId
     roleType RoleType
     forumId ForumId
-    deriving Show
+
+    Primary userId forumId
+
+    deriving Show Generic
 |]
