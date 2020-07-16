@@ -211,6 +211,16 @@ deobfuscateIntegral :: (Read a, Integral a) => H.HashidsContext -> T.Text -> May
 deobfuscateIntegral ctx r = fromIntegral <$>
   (Maybe.listToMaybe $ H.decode ctx $ T.unpack r) <|> (readMaybe $ T.unpack r)
 
+-- A general newtype wrapper for integrals that can be obfuscated
+-- make a type alias for your particular use. Or use it as an example. 
+newtype ObIntegral a = ObIntegral a
+  deriving newtype (Show, Read, Num, Eq, Ord, Enum, Real, Integral)
+type instance (Obfuscated (ObIntegral a)) = T.Text
+instance Integral a => CanObfuscate (ObIntegral a) where
+  obfuscate = obfuscateIntegral
+instance (Read a, Integral a) => CanDeobfuscate (ObIntegral a) where
+  deobfuscate = deobfuscateIntegral
+
 type instance Obfuscated (Key e) = T.Text
 instance (ToBackendKey SqlBackend e) => CanObfuscate (Key e) where
   obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral $ fromSqlKey i]
