@@ -5,7 +5,7 @@ module Domain.Types.ForumPostResponse (ForumPostResponse(..), DBModel, fromModel
 
 import Data.Aeson
 import Data.Aeson.TH
-import Web.Obfuscate (Obfuscateable(..))
+import Web.Obfuscate 
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
 import qualified Data.Text as T
@@ -21,30 +21,6 @@ data ForumPostResponse = ForumPostResponse
   , fprCreated :: UTCTime
   }
 
-data ObfuscatedForumPostResponse = ObfuscatedForumPostResponse
-  { ofprForumPostId :: Obfuscated ForumPostId
-  , ofprContent :: Text
-  , ofprSortOrder :: Int
-  , ofprCreated :: UTCTime
-  }
-
-instance Obfuscateable ForumPostResponse where
-  type Obfuscated ForumPostResponse = ObfuscatedForumPostResponse
-  obfuscate ctx response = ObfuscatedForumPostResponse
-      { ofprForumPostId = obfuscate ctx $ fprForumPostId response
-      , ofprContent = fprContent response 
-      , ofprSortOrder = fprSortOrder response 
-      , ofprCreated = fprCreated response 
-      }
-  deobfuscate ctx response = do 
-    forumPostId <- deobfuscate ctx $ ofprForumPostId response
-    pure $ ForumPostResponse
-      { fprForumPostId= forumPostId 
-      , fprContent = ofprContent response 
-      , fprSortOrder = ofprSortOrder response 
-      , fprCreated = ofprCreated response 
-      }
-
 type DBModel = (Entity ForumPost, Entity User, E.Value Int) 
 
 fromModel :: DBModel -> ForumPostResponse
@@ -56,4 +32,5 @@ fromModel (post, author, votes) =
     , fprCreated = forumPostCreatedAt $ entityVal post
     }
 
+$(deriveObfuscate defaultObfuscationOptions ''ForumPostResponse)
 $(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "ofpr")} 'ObfuscatedForumPostResponse)

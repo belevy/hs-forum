@@ -47,6 +47,7 @@ dependencies:
 - string-conversions
 - tagged
 - text
+- template-haskell
 - time
 - transformers
 - unliftio

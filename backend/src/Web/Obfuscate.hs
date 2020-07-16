@@ -1,11 +1,14 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Web.Obfuscate where
 
 import Data.Tagged
 import Data.Kind
+import Data.List (nub)
+import Control.Monad 
 import Text.Read (readMaybe)
 import Data.Typeable (Typeable)
 import GHC.TypeLits (Nat, natVal, KnownNat, KnownSymbol, Symbol)
@@ -31,49 +34,181 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Scientific (isInteger, toBoundedInteger)
 import Data.HashMap.Strict (mapWithKey)
 import qualified Data.HashMap.Strict as HashMap
+import qualified Language.Haskell.TH as TH
 
-class Obfuscateable a where
-  type Obfuscated a
+data ObfuscationOptions = ObfuscationOptions
+  { obfuscatedFieldPrefix :: String
+  , obfuscatedConstructorPrefix :: String
+  }
+
+defaultObfuscationOptions :: ObfuscationOptions
+defaultObfuscationOptions = ObfuscationOptions
+  { obfuscatedFieldPrefix = "ob"
+  , obfuscatedConstructorPrefix = "Obfuscated"
+  }
+
+deriveObfuscate :: ObfuscationOptions-> TH.Name -> TH.Q [TH.Dec]
+deriveObfuscate options tyName = do
+  TH.TyConI ty <- TH.reify tyName
+  (obfuscatedName, obfuscatedTy) <- mkObfuscatedType ty 
+  let obfuscatedInstance = TH.TySynInstD ''Obfuscated (TH.TySynEqn [TH.ConT tyName] (TH.ConT obfuscatedName))
+  canObfuscate <- generateCanObfuscate ty
+  canDeobfuscate <- generateCanDeobfuscate ty
+  let canObfuscateInstance = TH.InstanceD Nothing [] (TH.ConT ''CanObfuscate `TH.AppT` TH.ConT tyName) canObfuscate
+  let canDeobfuscateInstance = TH.InstanceD Nothing [] (TH.ConT ''CanDeobfuscate `TH.AppT` TH.ConT tyName) canDeobfuscate
+  pure [obfuscatedTy, obfuscatedInstance, canObfuscateInstance, canDeobfuscateInstance]
+    where 
+      fieldPrefix = obfuscatedFieldPrefix options
+      constructorPrefix = obfuscatedConstructorPrefix options
+
+      obfuscatedFieldName n = TH.mkName (fieldPrefix ++ TH.nameBase n) 
+      obfuscatedConstructorName n = TH.mkName (constructorPrefix ++ TH.nameBase n) 
+
+      generateCanObfuscate (TH.DataD _ _ _ _ cs _) = traverse generateObfuscateFn cs
+      generateCanObfuscate (TH.NewtypeD _ _ _ _ c _) = traverse generateObfuscateFn [c]
+
+      generateCanDeobfuscate (TH.DataD _ _ _ _ cs _) = traverse generateDeobfuscateFn cs
+      generateCanDeobfuscate (TH.NewtypeD _ _ _ _ c _) = traverse generateDeobfuscateFn [c]
+
+      generateDeobfuscateFn (TH.NormalC n tys) = do
+        let deobfuscateFn = TH.mkName "deobfuscate"
+            ctx = TH.mkName "ctx"
+            x = TH.mkName "x"
+        body <- [| undefined |]
+        pure $ TH.FunD deobfuscateFn [ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] ]
+
+      generateDeobfuscateFn (TH.RecC n tys) = do
+        let deobfuscateFn = TH.mkName "deobfuscate"
+            ctx = TH.mkName "ctx"
+            x = TH.mkName "x"
+            pureFn = TH.VarE $ TH.mkName "pure"
+        (deobfuscatedBinds, deobfuscatedFields) <- fmap mconcat $ traverse assignDeobfuscatedField tys
+
+        let body = TH.DoE $ join 
+                    [ fmap (\(p, e) -> TH.BindS p e) deobfuscatedBinds
+                    , [TH.NoBindS (pureFn `TH.AppE` (TH.RecConE n deobfuscatedFields))]
+                    ]
+        pure $ TH.FunD deobfuscateFn [ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] ]
+
+      assignDeobfuscatedField (n, _, ty) = do
+        isObfuscateable <- isFieldObfuscateable ty 
+        if isObfuscateable then do
+          let deobfuscatedFieldName = TH.mkName $ "d" ++ TH.nameBase n
+          deobfuscatedE <- [| deobfuscate ctx $ $(TH.varE $ obfuscatedFieldName n) x |]
+          pure $ ([(TH.VarP deobfuscatedFieldName, deobfuscatedE)], [(n, TH.VarE deobfuscatedFieldName)])
+        else do
+          fieldValue <- [|$(TH.varE $ obfuscatedFieldName n) x|]
+          pure $ ([], [(n, fieldValue)])
+
+
+      generateObfuscateFn (TH.NormalC n tys) = do
+        let obfuscateFn = TH.mkName "obfuscate"
+            ctx = TH.mkName "ctx"
+            x = TH.mkName "x"
+        body <- [| undefined |]
+        pure $ TH.FunD obfuscateFn [ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] ]
+
+      generateObfuscateFn (TH.RecC n tys) = do
+        let obfuscateFn = TH.mkName "obfuscate"
+            ctx = TH.mkName "ctx"
+            x = TH.mkName "x"
+        obfuscatedFields <- traverse assignObfuscatedField tys
+        let body = TH.RecConE (obfuscatedConstructorName n) obfuscatedFields
+        pure $ TH.FunD obfuscateFn [ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] ]
+
+      assignObfuscatedField (fieldName, _, ty) = do
+        isObfuscateable <- isFieldObfuscateable ty 
+        (,) <$> pure (obfuscatedFieldName fieldName) <*>
+          if isObfuscateable then
+            [|obfuscate ctx ($(TH.varE fieldName) x)|]
+          else 
+            [|$(TH.varE fieldName) x|]
+
+      mkObfuscatedType (TH.DataD cxt n tvbs mKind cs dcs) = do
+        obfuscatedCs <- traverse obfuscateConstructor cs 
+        let obfuscatedName = obfuscatedConstructorName n
+        pure $ (obfuscatedName, TH.DataD cxt obfuscatedName tvbs mKind obfuscatedCs dcs)
+      mkObfuscatedType (TH.NewtypeD cxt n tvbs mKind c dcs) = do
+        obfuscatedC <- obfuscateConstructor c
+        let obfuscatedName = obfuscatedConstructorName n
+        pure $ (obfuscatedName, TH.NewtypeD cxt obfuscatedName tvbs mKind obfuscatedC dcs)
+
+      obfuscateConstructor (TH.NormalC n tys) = do
+        obfuscatedTys <- traverse (\(b, t) -> (,) <$> pure b <*> obfuscateField t) tys
+        let obfuscatedName = obfuscatedConstructorName n
+        pure $ TH.NormalC obfuscatedName obfuscatedTys
+      obfuscateConstructor (TH.RecC n tys) = do
+        obfuscatedTys <- traverse (\(n, b, t) -> (,,) <$> pure (obfuscatedFieldName n) <*> pure b <*> obfuscateField t) tys
+        let obfuscatedName = obfuscatedConstructorName n
+        pure $ TH.RecC obfuscatedName obfuscatedTys
+      obfuscateConstructor (TH.GadtC ns tys ty) = do
+        obfuscatedTys <- traverse (\(b, t) -> (,) <$> pure b <*> obfuscateField t) tys
+        let obfuscatedNames = fmap obfuscatedConstructorName ns
+        pure $ TH.GadtC obfuscatedNames obfuscatedTys ty
+      obfuscateConstructor (TH.RecGadtC ns tys ty) = do
+        obfuscatedTys <- traverse (\(n, b, t) -> (,,) <$> pure (obfuscatedFieldName n) <*> pure b <*> obfuscateField t) tys
+        let obfuscatedNames = fmap obfuscatedConstructorName ns
+        pure $ TH.RecGadtC obfuscatedNames obfuscatedTys ty
+      obfuscateConstructor (TH.ForallC tvbs cxt c) = do
+        TH.ForallC tvbs cxt <$> obfuscateConstructor c
+      obfuscateConstructor c = pure c
+
+      isFieldObfuscateable ty = do
+        instances <- TH.reifyInstances ''Obfuscated [ty]
+        pure $ length instances > 0
+
+      obfuscateField ty = do
+        isObfuscateable <- isFieldObfuscateable ty 
+        if isObfuscateable then
+          pure $ TH.ConT ''Obfuscated `TH.AppT` ty
+        else 
+          pure ty
+
+type family Obfuscated a 
+class CanObfuscate a where
   obfuscate :: H.HashidsContext -> a -> Obfuscated a
+class CanDeobfuscate a where
   deobfuscate :: H.HashidsContext -> Obfuscated a -> Maybe a
+
+type instance Obfuscated [a] = [Obfuscated a] 
+instance CanObfuscate a => CanObfuscate [a] where
+  obfuscate ctx xs = fmap (obfuscate ctx) xs
+instance CanDeobfuscate a => CanDeobfuscate [a] where
+  deobfuscate ctx ys = traverse (deobfuscate ctx) ys
 
 deobfuscateIntegral :: (Read a, Integral a) => H.HashidsContext -> T.Text -> Maybe a
 deobfuscateIntegral ctx r = fromIntegral <$>
   (Maybe.listToMaybe $ H.decode ctx $ T.unpack r) <|> (readMaybe $ T.unpack r)
 
-instance Obfuscateable a => Obfuscateable [a] where
-  type Obfuscated [a] = [Obfuscated a] 
-  obfuscate ctx xs = fmap (obfuscate ctx) xs
-  deobfuscate ctx ys = traverse (deobfuscate ctx) ys
-
-instance Obfuscateable Integer where
-  type Obfuscated Integer = T.Text
+type instance Obfuscated Integer = T.Text
+instance CanObfuscate Integer where
   obfuscate ctx i = T.pack $ H.encode ctx [i]
+instance CanDeobfuscate Integer where
   deobfuscate = deobfuscateIntegral
 
-instance Obfuscateable Int where
-  type Obfuscated Int = T.Text
-
+type instance Obfuscated Int = T.Text
+instance CanObfuscate Int where
   obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral i]
+instance CanDeobfuscate Int where
   deobfuscate = deobfuscateIntegral
 
-instance Obfuscateable Int64 where
-  type Obfuscated Int64 = T.Text
-
+type instance Obfuscated Int64 = T.Text
+instance CanObfuscate Int64 where
   obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral i]
+instance CanDeobfuscate Int64 where
   deobfuscate = deobfuscateIntegral
 
-instance (ToBackendKey SqlBackend e) => Obfuscateable (Key e) where
-  type Obfuscated (Key e) = T.Text
-
+type instance Obfuscated (Key e) = T.Text
+instance (ToBackendKey SqlBackend e) => CanObfuscate (Key e) where
   obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral $ fromSqlKey i]
+instance (ToBackendKey SqlBackend e) => CanDeobfuscate (Key e) where
   deobfuscate ctx r = toSqlKey <$> deobfuscateIntegral ctx r
 
 class HasObfuscatedServerImplementation api context where
   routeImpl :: Proxy api -> Context context -> Delayed env (Server api) -> Router env 
   hoistServerWithContextImpl :: Proxy api -> Proxy context -> (forall x. m x -> n x) -> ServerT api m -> ServerT api n 
 
-instance ( Obfuscateable a
+instance ( CanDeobfuscate a
          , Obfuscated a ~ T.Text
          , HasContextEntry context H.HashidsContext
          , KnownSymbol capture
@@ -93,7 +228,7 @@ instance ( Obfuscateable a
                   Nothing -> delayedFail err400 { errBody = "Failed to deobfuscate entry" }
             )
 
-instance ( Obfuscateable a
+instance ( CanDeobfuscate a
          , HasContextEntry context H.HashidsContext 
          , AllMimeUnrender ctypes (Obfuscated a)
          , HasServer api context
@@ -125,7 +260,7 @@ instance ( Obfuscateable a
 instance {-# OVERLAPPABLE #-}
          ( ReflectMethod method, KnownNat status
          , HasContextEntry context H.HashidsContext
-         , Obfuscateable a
+         , CanObfuscate a
          , AllCTRender ctypes (Obfuscated a)
          ) => HasObfuscatedServerImplementation (Verb (method :: StdMethod) (status :: Nat) (ctypes :: [*]) a) context where
   hoistServerWithContextImpl _ _ nt s = nt s
@@ -137,7 +272,7 @@ instance {-# OVERLAPPABLE #-}
 
 instance ( ReflectMethod method, KnownNat status
          , HasContextEntry context H.HashidsContext
-         , Obfuscateable a
+         , CanObfuscate a
          , AllCTRender ctypes (Obfuscated a)
          , GetHeaders (Headers ls a)
          ) => HasObfuscatedServerImplementation (Verb (method :: StdMethod) (status :: Nat) (ctypes :: [*]) (Headers ls a)) context where

@@ -1,5 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
-
+{-# LANGUAGE TemplateHaskell #-} 
 module Data.PaginatedResponse 
     ( PaginatedResponse
     , toPaginatedResponse
@@ -20,14 +19,15 @@ data PaginatedResponse a = PaginatedResponse
   , paginatedData :: [a]
   }
 
-instance Obfuscateable a => Obfuscateable (PaginatedResponse a) where
-  type Obfuscated (PaginatedResponse a) = PaginatedResponse (Obfuscated a)
+type instance Obfuscated (PaginatedResponse a) = PaginatedResponse (Obfuscated a)
+instance CanObfuscate a => CanObfuscate (PaginatedResponse a) where
   obfuscate ctx response = PaginatedResponse
     { paginatedTotalCount = paginatedTotalCount response
     , paginatedCurrentPage = paginatedCurrentPage response
     , paginatedPageSize = paginatedPageSize response
     , paginatedData = obfuscate ctx $ paginatedData response
     }
+instance CanDeobfuscate a => CanDeobfuscate (PaginatedResponse a) where
   deobfuscate ctx response = do
     deobfuscatedData <- deobfuscate ctx $ paginatedData response
     pure $ PaginatedResponse 
