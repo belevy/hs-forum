@@ -44,3 +44,5 @@ runApp = do
     app <- mkApp config
     putStrLn $ "Running on " <> (show $ Config.configPort config)
     Warp.run (Config.configPort config) app 
+
+

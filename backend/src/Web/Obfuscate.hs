@@ -54,8 +54,8 @@ deriveObfuscate options tyName = do
   let obfuscatedInstance = TH.TySynInstD ''Obfuscated (TH.TySynEqn [TH.ConT tyName] (TH.ConT obfuscatedName))
   canObfuscate <- generateCanObfuscate ty
   canDeobfuscate <- generateCanDeobfuscate ty
-  let canObfuscateInstance = TH.InstanceD Nothing [] (TH.ConT ''CanObfuscate `TH.AppT` TH.ConT tyName) canObfuscate
-  let canDeobfuscateInstance = TH.InstanceD Nothing [] (TH.ConT ''CanDeobfuscate `TH.AppT` TH.ConT tyName) canDeobfuscate
+  let canObfuscateInstance = TH.InstanceD Nothing [] (TH.ConT ''CanObfuscate `TH.AppT` TH.ConT tyName) [canObfuscate]
+  let canDeobfuscateInstance = TH.InstanceD Nothing [] (TH.ConT ''CanDeobfuscate `TH.AppT` TH.ConT tyName) [canDeobfuscate]
   pure [obfuscatedTy, obfuscatedInstance, canObfuscateInstance, canDeobfuscateInstance]
     where 
       fieldPrefix = obfuscatedFieldPrefix options
@@ -64,22 +64,28 @@ deriveObfuscate options tyName = do
       obfuscatedFieldName n = TH.mkName (fieldPrefix ++ TH.nameBase n) 
       obfuscatedConstructorName n = TH.mkName (constructorPrefix ++ TH.nameBase n) 
 
-      generateCanObfuscate (TH.DataD _ _ _ _ cs _) = traverse generateObfuscateFn cs
-      generateCanObfuscate (TH.NewtypeD _ _ _ _ c _) = traverse generateObfuscateFn [c]
+      generateCanObfuscate (TH.DataD _ _ _ _ cs _) = do 
+        clauses <- traverse generateObfuscateClause cs
+        pure $ TH.FunD (TH.mkName "obfuscate") clauses
+      generateCanObfuscate (TH.NewtypeD _ _ _ _ c _) = do
+        clauses <- traverse generateObfuscateClause [c] 
+        pure $ TH.FunD (TH.mkName "obfuscate") clauses
 
-      generateCanDeobfuscate (TH.DataD _ _ _ _ cs _) = traverse generateDeobfuscateFn cs
-      generateCanDeobfuscate (TH.NewtypeD _ _ _ _ c _) = traverse generateDeobfuscateFn [c]
+      generateCanDeobfuscate (TH.DataD _ _ _ _ cs _) = do
+        clauses <- traverse generateDeobfuscateClause cs
+        pure $ TH.FunD (TH.mkName "deobfuscate") clauses
+      generateCanDeobfuscate (TH.NewtypeD _ _ _ _ c _) = do
+        clauses <- traverse generateDeobfuscateClause [c]
+        pure $ TH.FunD (TH.mkName "deobfuscate") clauses
 
-      generateDeobfuscateFn (TH.NormalC n tys) = do
-        let deobfuscateFn = TH.mkName "deobfuscate"
-            ctx = TH.mkName "ctx"
+      generateDeobfuscateClause (TH.NormalC n tys) = do
+        let ctx = TH.mkName "ctx"
             x = TH.mkName "x"
         body <- [| undefined |]
-        pure $ TH.FunD deobfuscateFn [ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] ]
+        pure $ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] 
 
-      generateDeobfuscateFn (TH.RecC n tys) = do
-        let deobfuscateFn = TH.mkName "deobfuscate"
-            ctx = TH.mkName "ctx"
+      generateDeobfuscateClause (TH.RecC n tys) = do
+        let ctx = TH.mkName "ctx"
             x = TH.mkName "x"
             pureFn = TH.VarE $ TH.mkName "pure"
         (deobfuscatedBinds, deobfuscatedFields) <- fmap mconcat $ traverse assignDeobfuscatedField tys
@@ -88,7 +94,7 @@ deriveObfuscate options tyName = do
                     [ fmap (\(p, e) -> TH.BindS p e) deobfuscatedBinds
                     , [TH.NoBindS (pureFn `TH.AppE` (TH.RecConE n deobfuscatedFields))]
                     ]
-        pure $ TH.FunD deobfuscateFn [ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] ]
+        pure $ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] 
 
       assignDeobfuscatedField (n, _, ty) = do
         isObfuscateable <- isFieldObfuscateable ty 
@@ -100,21 +106,27 @@ deriveObfuscate options tyName = do
           fieldValue <- [|$(TH.varE $ obfuscatedFieldName n) x|]
           pure $ ([], [(n, fieldValue)])
 
+      obfuscateNormalField (x, (_, ty)) = do
+        isObfuscateable <- isFieldObfuscateable ty 
+        if isObfuscateable then
+          [| obfuscate ctx $(TH.varE x) |]
+        else 
+          TH.varE x
 
-      generateObfuscateFn (TH.NormalC n tys) = do
-        let obfuscateFn = TH.mkName "obfuscate"
-            ctx = TH.mkName "ctx"
-            x = TH.mkName "x"
-        body <- [| undefined |]
-        pure $ TH.FunD obfuscateFn [ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] ]
-
-      generateObfuscateFn (TH.RecC n tys) = do
-        let obfuscateFn = TH.mkName "obfuscate"
-            ctx = TH.mkName "ctx"
+      generateObfuscateClause c@(TH.NormalC n tys) = do
+        let ctx = TH.mkName "ctx"
+        xs <- traverse (const $ TH.newName "x") tys
+        let ps = fmap TH.VarP xs
+        fields <- traverse obfuscateNormalField (zip xs tys) 
+        let body = foldl TH.AppE (TH.ConE (obfuscatedConstructorName n)) fields
+        pure $ TH.Clause [TH.VarP ctx, TH.ConP n ps] (TH.NormalB body) [] 
+      
+      generateObfuscateClause (TH.RecC n tys) = do
+        let ctx = TH.mkName "ctx"
             x = TH.mkName "x"
         obfuscatedFields <- traverse assignObfuscatedField tys
         let body = TH.RecConE (obfuscatedConstructorName n) obfuscatedFields
-        pure $ TH.FunD obfuscateFn [ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] ]
+        pure $ TH.Clause [TH.VarP ctx, TH.VarP x] (TH.NormalB body) [] 
 
       assignObfuscatedField (fieldName, _, ty) = do
         isObfuscateable <- isFieldObfuscateable ty 
@@ -153,9 +165,19 @@ deriveObfuscate options tyName = do
         TH.ForallC tvbs cxt <$> obfuscateConstructor c
       obfuscateConstructor c = pure c
 
+      -- higher kinded types are only obfuscateable if they wrap an obfuscateable type 
+      -- this assumes all higher kinded types are Functor-like 
+      isFieldObfuscateable (TH.AppT TH.ListT ty) = isFieldObfuscateable ty
+      isFieldObfuscateable ty@(TH.AppT (TH.ConT _) baseTy) = do
+        (&&) <$> (fmap (\instances -> length instances > 0) (TH.reifyInstances ''Obfuscated [ty]))
+             <*> isFieldObfuscateable baseTy
       isFieldObfuscateable ty = do
-        instances <- TH.reifyInstances ''Obfuscated [ty]
-        pure $ length instances > 0
+        -- Strings are silly, they get a list instance but show up as a ConT
+        if ty == TH.ConT ''String then do
+           pure False
+        else do
+          instances <- TH.reifyInstances ''Obfuscated [ty]
+          pure $ length instances > 0
 
       obfuscateField ty = do
         isObfuscateable <- isFieldObfuscateable ty 
@@ -176,27 +198,18 @@ instance CanObfuscate a => CanObfuscate [a] where
 instance CanDeobfuscate a => CanDeobfuscate [a] where
   deobfuscate ctx ys = traverse (deobfuscate ctx) ys
 
+type instance Obfuscated (Maybe a) = Maybe (Obfuscated a)
+instance CanObfuscate a => CanObfuscate (Maybe a) where
+  obfuscate ctx xs = fmap (obfuscate ctx) xs
+instance CanDeobfuscate a => CanDeobfuscate (Maybe a) where
+  deobfuscate ctx ys = traverse (deobfuscate ctx) ys
+
+obfuscateIntegral :: (Integral a) => H.HashidsContext -> a -> T.Text
+obfuscateIntegral ctx i = T.pack $ H.encode ctx [fromIntegral i]
+
 deobfuscateIntegral :: (Read a, Integral a) => H.HashidsContext -> T.Text -> Maybe a
 deobfuscateIntegral ctx r = fromIntegral <$>
   (Maybe.listToMaybe $ H.decode ctx $ T.unpack r) <|> (readMaybe $ T.unpack r)
-
-type instance Obfuscated Integer = T.Text
-instance CanObfuscate Integer where
-  obfuscate ctx i = T.pack $ H.encode ctx [i]
-instance CanDeobfuscate Integer where
-  deobfuscate = deobfuscateIntegral
-
-type instance Obfuscated Int = T.Text
-instance CanObfuscate Int where
-  obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral i]
-instance CanDeobfuscate Int where
-  deobfuscate = deobfuscateIntegral
-
-type instance Obfuscated Int64 = T.Text
-instance CanObfuscate Int64 where
-  obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral i]
-instance CanDeobfuscate Int64 where
-  deobfuscate = deobfuscateIntegral
 
 type instance Obfuscated (Key e) = T.Text
 instance (ToBackendKey SqlBackend e) => CanObfuscate (Key e) where
