@@ -6,6 +6,7 @@ module Domain.Types.ForumPostResponse (ForumPostResponse(..), DBModel, fromModel
 import Data.Aeson
 import Data.Aeson.TH
 import Web.Obfuscate 
+import Web.Obfuscate.TH
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
 import qualified Data.Text as T

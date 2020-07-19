@@ -8,6 +8,7 @@ import Data.Aeson.TH
 import qualified Data.Text as T
 
 import Web.Obfuscate
+import Web.Obfuscate.TH
 
 import DB.Model.User 
 
@@ -18,4 +19,4 @@ data CreateForumRequest = CreateForumRequest
   }
 
 $(deriveObfuscate defaultObfuscationOptions ''CreateForumRequest)
-$(deriveFromJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "obcfr")} 'ObfuscatedCreateForumRequest)
+$(deriveFromJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "ocfr")} 'ObfuscatedCreateForumRequest)

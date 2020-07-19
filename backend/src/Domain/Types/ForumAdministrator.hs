@@ -7,6 +7,7 @@ import Data.Aeson
 import Data.Aeson.TH
 import DB.Model.User
 import Web.Obfuscate 
+import Web.Obfuscate.TH
 import Data.Text (Text)
 import qualified Data.Text as T
 import Database.Esqueleto (Entity(..), Value(..))
