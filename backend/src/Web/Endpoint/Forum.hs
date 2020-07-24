@@ -11,6 +11,7 @@ import qualified Data.Text as T
 import qualified Data.ByteString.Lazy.Char8 as LC8
 import Data.Time.Clock (UTCTime)
 import UnliftIO (MonadUnliftIO, liftIO, throwIO, handle, catch)
+import Control.Exception (SomeException(..), mapException)
 import qualified Data.Maybe as Maybe
 import Data.Int
 
@@ -98,17 +99,12 @@ server = listForums :<|> getForum :<|> getForumPosts :<|> createForum
 
     createForum :: SessionData -> CreateForumRequest -> AppHandler (WithCSRFToken ForumResponse)
     createForum session request = do
-      forum <- runDB $ do
-        forumId <- handle handleCreationException $ DB.createForum $ CreateForumData
+      Just forum <- runDB $ do
+        forumId <- DB.createForum $ CreateForumData
             { cfdUser = sessionUser session
             , cfdForumName = cfrName request
             , cfdForumDescription = cfrDescription request
             , cfdForumAdministrators = cfrAdministrators request
             }
-        mForum <- getForumById forumId
-        maybe (throwIO $ err500{errBody = "failed to save"}) pure mForum
+        getForumById forumId
       addCsrfToken $ ForumResponse.fromModel forum
-
-      where
-        handleCreationException :: MonadUnliftIO m => ForumCreationError -> m a
-        handleCreationException e = throwIO $ err500{errBody=LC8.pack $ show e}

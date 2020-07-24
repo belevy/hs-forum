@@ -77,6 +77,8 @@ instance (ToBackendKey SqlBackend e) => CanObfuscate (Key e) where
 instance (ToBackendKey SqlBackend e) => CanDeobfuscate (Key e) where
   deobfuscate ctx r = toSqlKey <$> deobfuscateIntegral ctx r
 
+data Obfuscate deriving Typeable
+
 class HasObfuscatedServerImplementation api context where
   routeImpl :: Proxy api -> Context context -> Delayed env (Server api) -> Router env 
   hoistServerWithContextImpl :: Proxy api -> Proxy context -> (forall x. m x -> n x) -> ServerT api m -> ServerT api n 
@@ -90,16 +92,12 @@ instance ( CanDeobfuscate a
 
   hoistServerWithContextImpl _ pc nt s = hoistServerWithContext (Proxy :: Proxy api) pc nt . s
 
-  routeImpl Proxy context d =
-    let hashidsContext = getContextEntry context
-    in CaptureRouter $
-      route (Proxy :: Proxy api)
-            context
-            (addCapture d $ \txt -> 
-               case deobfuscate hashidsContext txt of
+  routeImpl Proxy context d = CaptureRouter $
+      route (Proxy :: Proxy api) context $ 
+            addCapture d $ \txt -> 
+               case deobfuscate (getContextEntry context) txt of
                   Just v -> return v 
                   Nothing -> delayedFail err400 { errBody = "Failed to deobfuscate entry" }
-            )
 
 instance ( CanDeobfuscate a
          , HasContextEntry context H.HashidsContext 
@@ -107,7 +105,8 @@ instance ( CanDeobfuscate a
          , HasServer api context
          ) => HasObfuscatedServerImplementation (ReqBody ctypes a :> api) context where
   hoistServerWithContextImpl _ pc nt s = hoistServerWithContext (Proxy :: Proxy api) pc nt . s
-  routeImpl Proxy context subserver = route (Proxy :: Proxy api) context $
+  routeImpl Proxy context subserver = 
+    route (Proxy :: Proxy api) context $
           addBodyCheck subserver ctCheck bodyCheck
     where
       -- Content-Type check, we only lookup we can try to parse the request body
@@ -163,16 +162,3 @@ instance {-# OVERLAPPING #-}
   hoistServerWithContext _ = hoistServerWithContextImpl (Proxy :: Proxy api)
   route _ = routeImpl (Proxy :: Proxy api)
 
-data Obfuscate
-  deriving Typeable
-
-decodeFields :: FromJSON a => H.HashidsContext -> Value -> Result a
-decodeFields ctx = fromJSON . go
-  where
-  go (Object o) = Object $ fmap go o
-  go val@(Array a) = Array $ fmap go a
-  go val@(String s) =
-    Maybe.fromMaybe val $ do 
-      i <- Maybe.listToMaybe $ H.decode ctx (cs s)
-      pure $ toJSON i
-  go val = val

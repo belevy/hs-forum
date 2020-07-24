@@ -36,7 +36,7 @@ mkApp config =
       contextProxy = Proxy @'[SessionAuthHandler, HashidsContext]
   in do 
     pure $ serveWithContext api context
-          $ hoistServerWithContext api contextProxy (runAppHandler env) server
+         $ hoistServerWithContext api contextProxy (runAppHandler env) server
            
 runApp :: IO ()
 runApp = do
@@ -44,5 +44,3 @@ runApp = do
     app <- mkApp config
     putStrLn $ "Running on " <> (show $ Config.configPort config)
     Warp.run (Config.configPort config) app 
-
-

@@ -7,6 +7,7 @@ module Env
 
 import Database.Persist.Sql
 import Data.Pool
+import qualified Data.Maybe as Maybe
 import Database.Persist.Postgresql
 import Control.Monad.Reader
 import Control.Monad.Logger (MonadLogger, LoggingT, runStdoutLoggingT)
@@ -17,6 +18,7 @@ import Config
 
 data Env = Env 
   { envPool :: Pool SqlBackend
+  , envDebug :: Bool
   , redisConn :: Redis.Connection
   }
 
@@ -36,7 +38,11 @@ withEnv config action =
   withRunInIO $ \runInIO ->
   Redis.withCheckedConnect redisConnectInfo $ \conn -> 
   runInIO $ runStdoutLoggingT $ withPostgresqlPool (dbConnectionString config) 1 $ \pool ->
-    action $ Env pool conn
+    action $ Env 
+      { envPool = pool
+      , envDebug = Maybe.fromMaybe False $ configDebug config
+      , redisConn = conn
+      }
 
   where 
     redisConnectInfo = Redis.defaultConnectInfo

@@ -13,6 +13,7 @@ data Config = Config
   , configPort :: Int
   , configHashidsSalt :: String
   , configRedis :: RedisConfig
+  , configDebug :: Maybe Bool
   } deriving Show
 
 data DatabaseConfig = DatabaseConfig
