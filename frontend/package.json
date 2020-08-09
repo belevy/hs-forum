@@ -9,11 +9,20 @@
     "elm-test": "^0.19.1-revision2",
     "elm-webpack-loader": "^6.0.1",
     "node-sass": "^4.14.1",
+    "purescript": "^0.13.8",
+    "purescript-psa": "^0.7.3",
+    "purs-loader": "^3.7.1",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
     "sass-loader": "^8.0.2",
+    "spago": "^0.15.3",
     "style-loader": "^1.2.1",
     "ts-loader": "^7.0.2",
     "typescript": "^3.8.3",
     "webpack": "^4.43.0",
     "webpack-cli": "^3.3.11"
+  },
+  "dependencies": {
+    "@types/node": "^14.0.27"
   }
 }

@@ -29,16 +29,14 @@ module.exports = {
         use: 'ts-loader',
         exclude: /node_modules/
       }, 
-      {
-        test: /\.elm$/,
-        exclude: [/elm-stuff/, /node_modules/],
-        use: {
-          loader: 'elm-webpack-loader',
-          options: {
-            cwd: path.resolve(__dirname, 'elm'),
-            debug: true
+      { test: /\.purs$/, 
+        use: [ 
+          { loader: 'spago-loader', 
+            options: {
+              pscIde: true 
+            }
           }
-        }
+        ] 
       },
       {
         test: /\.scss$/,
@@ -50,10 +48,13 @@ module.exports = {
       }
     ],
   },
+  resolveLoader: {
+    modules: ['node_modules', 'webpack_loaders']
+  },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js', '.elm', '.scss'],
+    extensions: ['.tsx', '.ts', '.js', '.purs', '.scss'],
     alias: {
-      '@elm': path.resolve("elm", "src"),
+      '@purs': path.resolve("purs", "src"),
       '@styles': path.resolve("styles"),
     }
   }
