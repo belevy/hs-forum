@@ -33,7 +33,8 @@ module.exports = {
         use: [ 
           { loader: 'spago-loader', 
             options: {
-              pscIde: true 
+              pscIde: true,
+              src: path.resolve('purs/src')
             }
           }
         ] 

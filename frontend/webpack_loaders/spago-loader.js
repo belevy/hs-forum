@@ -41,19 +41,26 @@ var isFlagSet = function(args, flag) {
 
 var depsAdded = false;
 
+const defaultOptions = 
+    {
+      pscIde : true, 
+      src: 'src',
+      outputDir: 'output'
+    };
 module.exports = function(source) {
-  const options = Object.assign({ pscIde : true, cwd : '.'}, getOptions(this));
+  const options = Object.assign(defaultOptions, getOptions(this));
   const callback = this.async();
-  
+  this.addContextDependency(options.src);
 
   if(this.mode !== 'production' && isInWatchMode()) {
-    if(options.pscIde) {
-      this.addContextDependency('output');
-    } else {
-      this.addContextDependency('purs/src');
-      child_process.execSync('npx spago build');
+    if(!options.pscIde) {
+      var outputFlag = '-u "-o ' + path.resolve(options.outputDir) + '"';
+      child_process.execSync('npx spago build ' + outputFlag);
     }
-    callback(null, 'var PS = require("'+ path.resolve('output/Main/index.js') + "\");\nmodule.exports = PS;");  
+    const modulePath = path.resolve(this.resourcePath).replace(path.resolve(options.src) + '/', '').replace('.purs', '');
+    const moduleName = modulePath.split('/').join('.');
+    const moduleJsFile = path.resolve(options.outputDir, moduleName, 'index.js');
+    callback(null, 'var PS = require("'+ moduleJsFile + "\");\nmodule.exports = PS;");  
   } else {
     var spago = child_process.spawn('npx', ['spago', 'bundle-module']);
     spago.stderr.on('data', data => {
