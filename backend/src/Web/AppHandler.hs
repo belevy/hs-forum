@@ -13,8 +13,7 @@ import Control.Monad.Except
 import Control.Monad.Fail
 import Control.Applicative
 import UnliftIO (MonadUnliftIO)
-import Control.Exception.Extended (try, SomeException(..), Exception, handle, throwIO, fromException)
-import Control.Exception (mapException)
+import Control.Exception.Extended (try, mapException, SomeException(..), Exception, handle, throwIO, fromException)
 import Env
 
 type AppServer api = ServerT api AppHandler

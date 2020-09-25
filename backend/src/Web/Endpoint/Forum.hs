@@ -4,15 +4,6 @@ module Web.Endpoint.Forum
   where
 
 import Servant
-import Data.Aeson
-import Data.Aeson.TH
-import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.ByteString.Lazy.Char8 as LC8
-import Data.Time.Clock (UTCTime)
-import UnliftIO (MonadUnliftIO, liftIO, throwIO, handle, catch)
-import Control.Exception (SomeException(..), mapException)
-import qualified Data.Maybe as Maybe
 import Data.Int
 
 import Web.Obfuscate
@@ -22,15 +13,17 @@ import Web.Auth
 import Web.Servant.Csrf
 
 import Data.PaginatedResponse
-import Env
 
-import DB.Forum as DB
 import DB.Model.Forum
 import Domain.Types.SessionData as SessionData
-import Domain.Types.ForumAdministrator as ForumAdministrator
 import Domain.Types.ForumPostResponse as ForumPostResponse
 import Domain.Types.ForumResponse as ForumResponse
 import Domain.Types.CreateForumRequest as CreateForumRequest
+
+import qualified UseCase.Forum.CreateForum as CreateForum 
+import qualified UseCase.Forum.ListForums as ListForums
+import qualified UseCase.Forum.GetForum as GetForum
+import qualified UseCase.Forum.ListForumPosts as ListForumPosts
 
 type Api = "forums" :> (ListForums :<|> GetForum :<|> GetForumPosts :<|> CreateForum)
 
@@ -66,45 +59,34 @@ server = listForums :<|> getForum :<|> getForumPosts :<|> createForum
                -> Maybe Int64
                -> Maybe Int64
                -> AppHandler (WithCSRFToken (PaginatedResponse ForumResponse))
-    listForums _ mPageSize mPage = do
-      resp <- fmap
-        (toPaginatedResponse pageSize page ForumResponse.fromModel)
-        (runDBReadOnly $ getAllForums pageSize page)
-      addCsrfToken resp
-
-      where
-        page = Maybe.fromMaybe 1 mPage
-        pageSize = Maybe.fromMaybe 25 mPageSize
+    listForums session mPageSize mPage = do
+      addCsrfToken =<< 
+        ListForums.execute (ListForums.Config
+          { ListForums.configSession = session
+          , ListForums.configPageSize = mPageSize
+          , ListForums.configPageNumber = mPage
+          })
 
     getForum :: SessionData -> ForumId -> AppHandler (WithCSRFToken ForumResponse)
-    getForum _ forumId = do
-      mForum <- runDBReadOnly $ getForumById forumId
-      resp <- maybeNotFound $ fmap ForumResponse.fromModel mForum
-      addCsrfToken resp
+    getForum sessionData forumId = do
+      GetForum.execute sessionData forumId
+        >>= maybeNotFound
+        >>= addCsrfToken
 
     getForumPosts :: SessionData
                   -> ForumId
                   -> Maybe Int64
                   -> Maybe Int64
                   -> AppHandler (WithCSRFToken (PaginatedResponse ForumPostResponse))
-    getForumPosts _ forumId mPageSize mPage = do
-      resp <- fmap
-        (toPaginatedResponse pageSize page ForumPostResponse.fromModel)
-        (runDBReadOnly $ getTopPostsInForum forumId pageSize page)
-      addCsrfToken resp
-      where
-        page = Maybe.fromMaybe 1 mPage
-        pageSize = Maybe.fromMaybe 25 mPageSize
-
+    getForumPosts session forumId mPageSize mPage = do
+      addCsrfToken =<< 
+        ListForumPosts.execute (ListForumPosts.Config
+          { ListForumPosts.configForumId = forumId
+          , ListForumPosts.configSession = session
+          , ListForumPosts.configPageSize = mPageSize
+          , ListForumPosts.configPageNumber = mPage
+          })
 
     createForum :: SessionData -> CreateForumRequest -> AppHandler (WithCSRFToken ForumResponse)
-    createForum session request = do
-      Just forum <- runDB $ do
-        forumId <- DB.createForum $ CreateForumData
-            { cfdUser = sessionUser session
-            , cfdForumName = cfrName request
-            , cfdForumDescription = cfrDescription request
-            , cfdForumAdministrators = cfrAdministrators request
-            }
-        getForumById forumId
-      addCsrfToken $ ForumResponse.fromModel forum
+    createForum session request = 
+      CreateForum.execute session request >>= addCsrfToken

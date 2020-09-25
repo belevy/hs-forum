@@ -54,26 +54,29 @@ instance CanObfuscate a => CanObfuscate (Maybe a) where
 instance CanDeobfuscate a => CanDeobfuscate (Maybe a) where
   deobfuscate ctx ys = traverse (deobfuscate ctx) ys
 
-obfuscateIntegral :: (Integral a) => H.HashidsContext -> a -> T.Text
-obfuscateIntegral ctx i = T.pack $ H.encode ctx [fromIntegral i]
+obfuscateIntegral :: (Integral a) => H.HashidsContext -> a -> Value
+obfuscateIntegral ctx i = String $ T.pack $ H.encode ctx [fromIntegral i]
 
-deobfuscateIntegral :: (Read a, Integral a) => H.HashidsContext -> T.Text -> Maybe a
-deobfuscateIntegral ctx r = fromIntegral <$>
+deobfuscateIntegral :: (Read a, Bounded a, Integral a) => H.HashidsContext -> Value -> Maybe a
+deobfuscateIntegral ctx (String r) = fromIntegral <$>
   (Maybe.listToMaybe $ H.decode ctx $ T.unpack r) <|> (readMaybe $ T.unpack r)
+deobfuscateIntegral ctx (Number n) = toBoundedInteger n
+deobfuscateIntegral ctx _ = Nothing
+
 
 -- A general newtype wrapper for integrals that can be obfuscated
 -- make a type alias for your particular use. Or use it as an example. 
 newtype ObIntegral a = ObIntegral a
-  deriving newtype (Show, Read, Num, Eq, Ord, Enum, Real, Integral)
-type instance (Obfuscated (ObIntegral a)) = T.Text
+  deriving newtype (Show, Read, Num, Eq, Ord, Enum, Real, Integral, Bounded)
+type instance (Obfuscated (ObIntegral a)) = Value
 instance Integral a => CanObfuscate (ObIntegral a) where
   obfuscate = obfuscateIntegral
-instance (Read a, Integral a) => CanDeobfuscate (ObIntegral a) where
+instance (Read a, Bounded a, Integral a) => CanDeobfuscate (ObIntegral a) where
   deobfuscate = deobfuscateIntegral
 
-type instance Obfuscated (Key e) = T.Text
+type instance Obfuscated (Key e) = Value
 instance (ToBackendKey SqlBackend e) => CanObfuscate (Key e) where
-  obfuscate ctx i = T.pack $ H.encode ctx [fromIntegral $ fromSqlKey i]
+  obfuscate ctx i = obfuscateIntegral ctx $ fromSqlKey i
 instance (ToBackendKey SqlBackend e) => CanDeobfuscate (Key e) where
   deobfuscate ctx r = toSqlKey <$> deobfuscateIntegral ctx r
 
@@ -84,7 +87,7 @@ class HasObfuscatedServerImplementation api context where
   hoistServerWithContextImpl :: Proxy api -> Proxy context -> (forall x. m x -> n x) -> ServerT api m -> ServerT api n 
 
 instance ( CanDeobfuscate a
-         , Obfuscated a ~ T.Text
+         , Obfuscated a ~ Value
          , HasContextEntry context H.HashidsContext
          , KnownSymbol capture
          , HasServer api context
@@ -95,7 +98,7 @@ instance ( CanDeobfuscate a
   routeImpl Proxy context d = CaptureRouter $
       route (Proxy :: Proxy api) context $ 
             addCapture d $ \txt -> 
-               case deobfuscate (getContextEntry context) txt of
+               case deobfuscate (getContextEntry context) (String txt) of
                   Just v -> return v 
                   Nothing -> delayedFail err400 { errBody = "Failed to deobfuscate entry" }
 
