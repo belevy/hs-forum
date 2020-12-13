@@ -1,24 +1,23 @@
 {
   "scripts": {
-    "build": "webpack --config webpack.config.js",
-    "watch": "webpack --watch --config webpack.config.js"
+    "spago:install": "spago install",
+    "spago:build": "spago build -n",
+    "sass:build": "sass styles/main.scss dist/style.css",
+    "spago:bundle": "spago bundle-module -m Main -n -s -w --to dist/index.js",
+    "bundle:prod": "esbuild ts/main.ts --define:process.env.NODE_ENV=\\\"production\\\" --bundle --outfile=dist/bundle.js --minify --sourcemap",
+    "bundle:dev": "esbuild ts/main.ts --define:process.env.NODE_ENV=\\\"development\\\" --bundle --outfile=dist/bundle.js --minify --sourcemap"
   },
   "devDependencies": {
-    "@types/node": "^14.0.27",
-    "css-loader": "^3.6.0",
-    "node-sass": "^4.14.1",
+    "@types/node": "^14.14.13",
+    "esbuild": "^0.8.22",
     "purescript": "^0.13.8",
     "purescript-psa": "^0.7.3",
-    "purs-loader": "^3.7.1",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
-    "sass-loader": "^8.0.2",
+    "purs-loader": "^3.7.2",
+    "react": "^16.14.0",
+    "react-dom": "^16.14.0",
+    "sass": "^1.30.0",
     "spago": "^0.15.3",
-    "style-loader": "^1.2.1",
-    "ts-loader": "^7.0.2",
-    "typescript": "^3.8.3",
-    "webpack": "^4.43.0",
-    "webpack-cli": "^3.3.11",
-    "yargs": "^15.4.1"
+    "url": "^0.11.0",
+    "xhr2": "^0.2.0"
   }
 }

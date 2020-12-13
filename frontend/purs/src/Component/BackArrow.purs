@@ -1,4 +1,6 @@
-module Components.BackArrow where
+module Component.BackArrow
+  ( mkBackArrow
+  ) where
 
 import Effect (Effect)
 import Prelude (map, pure, ($))

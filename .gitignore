@@ -7,4 +7,5 @@ elm-stuff/
 .*docker*
 node_modules/
 bundle.js
-
+webroot/styles
+webroot/scripts

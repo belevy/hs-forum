@@ -1,10 +1,20 @@
-.PHONY: dev repl start stop clean
+.PHONY: dev repl start stop clean frontend
 
 CWD=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 DOCKER_FILE=Dockerfile-backend
 
-webroot/scripts/bundle.js: frontend/*
-	@cd frontend && npm run-script build
+webroot/styles:
+	@mkdir -p $@
+webroot/styles/style.css: webroot/styles frontend
+	@cp frontend/dist/style.css $@
+
+webroot/scripts:
+	@mkdir -p $@
+webroot/scripts/bundle.js: webroot/scripts frontend 
+	@cp frontend/dist/bundle.js $@
+
+frontend: 
+	@$(MAKE) -s -C frontend
 
 .dev-docker-image-built: $(DOCKER_FILE) backend/stack.yaml backend/package.yaml
 	@docker build . -f $(DOCKER_FILE) --target dev --tag hs-forum/dev:latest
@@ -14,16 +24,14 @@ webroot/scripts/bundle.js: frontend/*
 	@docker build . -f $(DOCKER_FILE) --tag hs-forum/prod:latest
 	@touch $@
 
-start: .docker-image-built webroot/scripts/bundle.js
+start: .docker-image-built webroot/scripts/bundle.js webroot/styles/style.css
 	@docker-compose up -d
 
 stop: 
 	@docker-compose down 
 
-elm-dev: 
-	@docker-compose up -d
-	-@cd frontend && npm run-script watch
-	@docker-compose down
+frontend-dev: 
+	@$(MAKE) -s -C frontend dev
 
 define dev-docker-up 
 	@docker-compose up -d --scale backend=0 backend 
@@ -46,3 +54,5 @@ clean: stop
 	@rm -f .dev-docker-image-built 
 	@rm -f .docker-image-built
 	@rm -f webroot/scripts/bundle.js
+	@rm -f webroot/styles/style.css
+	@$(MAKE) -s -C frontend clean

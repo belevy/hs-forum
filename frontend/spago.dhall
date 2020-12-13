@@ -4,9 +4,13 @@ You can edit this file as you like.
 -}
 { name = "hs-forum"
 , dependencies =
-  [ "console"
+  [ "affjax"
+  , "argonaut"
+  , "argonaut-generic"
+  , "console"
   , "datetime"
   , "effect"
+  , "generics-rep"
   , "psci-support"
   , "react-basic"
   , "react-basic-dom"
