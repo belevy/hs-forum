@@ -1,4 +1,4 @@
-.PHONY: build
+.PHONY: build dev
 
 build: dist/bundle.js dist/style.css
 
@@ -26,7 +26,7 @@ dist/style.css: $(wildcard styles/**/*) node_modules
 	@npm run sass:build 
 	@touch $@
 
-dev: output dist/style.css $(wildcard frontend/ts/**/*)
+dev: output dist/style.css $(wildcard ts/**/*)
 	@npm run bundle:dev
 	@touch dist/bundle.js
 
