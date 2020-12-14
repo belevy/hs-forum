@@ -5,7 +5,6 @@ module Web.Endpoint.Session
 
 import Servant
 import Web.Auth
-import Web.Obfuscate
 import Web.AppHandler
 import Domain.Types.SessionData as Session
 import DB.User
@@ -17,6 +16,7 @@ import Web.Errors
 import Database.Persist (Entity(..))
 import Web.Cookie
 import Web.Servant.Csrf
+import Web.Servant.Obfuscate
 
 type Api = "sessions" :> 
   (     "me" :> Protected :> Get '[JSON] (WithCSRFToken SessionResponse)

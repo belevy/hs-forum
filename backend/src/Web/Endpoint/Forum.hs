@@ -11,6 +11,7 @@ import Web.AppHandler
 import Web.Errors
 import Web.Auth
 import Web.Servant.Csrf
+import Web.Servant.Obfuscate
 
 import Data.PaginatedResponse
 

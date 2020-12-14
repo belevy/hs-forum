@@ -4,20 +4,19 @@ module Database.Esqueleto.Extended ( module E
                                    , update
                                    , updateCount
                                    )
-  where 
+  where
 
-import Control.Monad
-import Control.Monad.IO.Class
-import Database.Esqueleto as E hiding (update, updateCount, from, on, selectFirst)
-import Database.Esqueleto.Experimental as E hiding (From)
-import Database.Esqueleto.Internal.Sql (SqlSelect)
-import Database.Esqueleto.Internal.Internal (rawEsqueleto, Mode(..))
-import qualified Data.Maybe as Maybe
-import Data.Int (Int64)
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Data.Int                             (Int64)
+import qualified Data.Maybe                           as Maybe
+import           Database.Esqueleto.Experimental      as E hiding (selectFirst,
+                                                            update, updateCount)
+import           Database.Esqueleto.Internal.Internal (Mode (..), rawEsqueleto, SqlSelect)
 
 selectFirst :: (MonadIO m, SqlSelect a r) => SqlQuery a -> SqlReadT m (Maybe r)
 selectFirst q =
-  fmap Maybe.listToMaybe $ 
+  fmap Maybe.listToMaybe $
     select (q <* limit 1)
 
 update :: MonadIO m => SqlQuery () -> SqlWriteT m ()

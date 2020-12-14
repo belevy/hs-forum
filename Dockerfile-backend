@@ -1,21 +1,40 @@
-FROM ubuntu:18.04 as base
+FROM debian:10.6 as base
 RUN apt-get update && apt-get install -y \
   libgmp10 \
   libpq-dev
 
 FROM base as stack-base
-ARG STACK_RESOLVER=lts-14.27
+ARG STACK_RESOLVER=lts-16.26
 RUN apt-get install -y curl
 RUN curl -sSL https://get.haskellstack.org/ | sh
 ENV PATH="/root/.local/bin:${PATH}"
 RUN stack setup --allow-different-user --resolver=$STACK_RESOLVER
-RUN stack build aeson --resolver=$STACK_RESOLVER
+
+# Build a bunch of common dependencies for build cache (speeds up build after stack.yaml/package.yaml change)
+RUN stack build --resolver=$STACK_RESOLVER \
+    aeson \
+    Cabal \
+    conduit \
+    containers \
+    esqueleto \
+    hspec \
+    hspec-discover \
+    monad-logger \
+    persistent \
+    servant-server \
+    text \
+    tls \
+    unordered-containers \
+    warp \
+    vector
+
 COPY backend/stack.yaml .
 COPY backend/package.yaml .
 RUN stack build --only-dependencies
 
 FROM stack-base as dev
 RUN stack install ghcid
+VOLUME ~/.stack
 VOLUME /var/hs-forum
 WORKDIR /var/hs-forum
 CMD ["bash", "run-dev.sh"]
@@ -24,6 +43,7 @@ FROM stack-base as builder
 COPY backend /var/hs-forum
 WORKDIR /var/hs-forum
 RUN stack install --allow-different-user .
+VOLUME ~/.stack
 
 FROM base as prod
 ENV PATH="/root/.local/bin:${PATH}"

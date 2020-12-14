@@ -57,7 +57,7 @@ getForumById forumId = do
 
 getTopPostsInForum :: MonadIO m => ForumId -> Int64 -> Int64 -> SqlReadT m (Int64, [(Entity ForumPost, Entity User, Value Int)])
 getTopPostsInForum forumId pageSize page = do
-  totalCount <- selectCount . from $ SelectQuery forumPosts
+  totalCount <- selectCount $ from forumPosts
   paginatedResults <- select $ paginated pageSize page $ forumPosts
   pure (totalCount, paginatedResults)
     where
