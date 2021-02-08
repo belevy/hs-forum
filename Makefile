@@ -1,4 +1,4 @@
-.PHONY: dev repl start stop clean frontend
+.PHONY: dev repl start stop clean frontend docker dev-docker
 
 CWD=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 DOCKER_FILE=Dockerfile-backend
@@ -16,15 +16,13 @@ webroot/scripts/bundle.js: webroot/scripts frontend
 frontend: 
 	@$(MAKE) -s -C frontend
 
-.dev-docker-image-built: $(DOCKER_FILE) backend/stack.yaml backend/package.yaml
-	@docker build . -f $(DOCKER_FILE) --target dev --tag hs-forum/dev:latest
-	@touch $@
+dev-docker: $(DOCKER_FILE) backend/stack.yaml backend/package.yaml
+	@DOCKER_BUILDKIT=1 docker build . -f $(DOCKER_FILE) --target dev --tag hs-forum/dev:latest 
 
-.docker-image-built: $(DOCKER_FILE) backend/*
-	@docker build . -f $(DOCKER_FILE) --tag hs-forum/prod:latest
-	@touch $@
+docker: $(DOCKER_FILE) 
+	@DOCKER_BUILDKIT=1 docker build . -f $(DOCKER_FILE) --tag hs-forum/prod:latest 
 
-start: .docker-image-built webroot/scripts/bundle.js webroot/styles/style.css
+start: docker webroot/scripts/bundle.js webroot/styles/style.css
 	@docker-compose up -d
 
 stop: 
@@ -43,10 +41,10 @@ define dev-docker-up
 	@docker-compose down
 endef
 
-dev: .dev-docker-image-built
+dev: dev-docker 
 	$(call dev-docker-up)
 
-repl: .dev-docker-image-built
+repl: dev-docker 
 	$(call dev-docker-up, stack ghci --allow-different-user)
 
 clean: stop

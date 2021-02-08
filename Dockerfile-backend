@@ -1,40 +1,29 @@
+#syntax=docker/dockerfile:1.2
+
 FROM debian:10.6 as base
 RUN apt-get update && apt-get install -y \
   libgmp10 \
   libpq-dev
 
 FROM base as stack-base
-ARG STACK_RESOLVER=lts-16.26
-RUN apt-get install -y curl
+RUN apt-get update && apt-get install -y curl
 RUN curl -sSL https://get.haskellstack.org/ | sh
 ENV PATH="/root/.local/bin:${PATH}"
-RUN stack setup --allow-different-user --resolver=$STACK_RESOLVER
-
-# Build a bunch of common dependencies for build cache (speeds up build after stack.yaml/package.yaml change)
-RUN stack build --resolver=$STACK_RESOLVER \
-    aeson \
-    Cabal \
-    conduit \
-    containers \
-    esqueleto \
-    hspec \
-    hspec-discover \
-    monad-logger \
-    persistent \
-    servant-server \
-    text \
-    tls \
-    unordered-containers \
-    warp \
-    vector
-
 COPY backend/stack.yaml .
 COPY backend/package.yaml .
-RUN stack build --only-dependencies
+RUN --mount=type=cache,target=/root/.stack --mount=type=cache,target=.stack-work stack build --only-dependencies 
 
 FROM stack-base as dev
-RUN stack install ghcid
-VOLUME ~/.stack
+RUN --mount=type=cache,target=/root/.stack --mount=type=cache,target=.stack-work stack install ghcid
+RUN apt-get update && apt-get install -y rsync
+RUN --mount=type=cache,target=/root/.stack \
+    cd /root/.stack && \
+    find . -name "*.sqlite3" > /tmp/rsync.includes && \
+    find pantry -not -name "*.*tar*" >> /tmp/rsync.includes && \
+    find programs -not -name "*.tar*" >> /tmp/rsync.includes && \
+    find snapshots >> /tmp/rsync.includes
+RUN --mount=type=cache,target=/root/.stack rsync -a --no-perms --files-from=/tmp/rsync.includes /root/.stack /root/.stack-cache
+RUN rsync -a /root/.stack-cache/* /root/.stack
 VOLUME /var/hs-forum
 WORKDIR /var/hs-forum
 CMD ["bash", "run-dev.sh"]
@@ -42,8 +31,7 @@ CMD ["bash", "run-dev.sh"]
 FROM stack-base as builder
 COPY backend /var/hs-forum
 WORKDIR /var/hs-forum
-RUN stack install --allow-different-user .
-VOLUME ~/.stack
+RUN --mount=type=cache,target=/root/.stack --mount=type=cache,target=.stack-work stack install --allow-different-user .
 
 FROM base as prod
 ENV PATH="/root/.local/bin:${PATH}"
