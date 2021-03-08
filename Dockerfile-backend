@@ -15,15 +15,8 @@ RUN --mount=type=cache,target=/root/.stack --mount=type=cache,target=.stack-work
 
 FROM stack-base as dev
 RUN --mount=type=cache,target=/root/.stack --mount=type=cache,target=.stack-work stack install ghcid
-RUN apt-get update && apt-get install -y rsync
-RUN --mount=type=cache,target=/root/.stack \
-    cd /root/.stack && \
-    find . -name "*.sqlite3" > /tmp/rsync.includes && \
-    find pantry -not -name "*.*tar*" >> /tmp/rsync.includes && \
-    find programs -not -name "*.tar*" >> /tmp/rsync.includes && \
-    find snapshots >> /tmp/rsync.includes
-RUN --mount=type=cache,target=/root/.stack rsync -a --no-perms --files-from=/tmp/rsync.includes /root/.stack /root/.stack-cache
-RUN rsync -a /root/.stack-cache/* /root/.stack
+RUN --mount=type=cache,target=/root/.stack mkdir /root/.stack-cache; cd /root/.stack; tar -cf - * | (cd /root/.stack-cache; tar -xf -)
+RUN rm -rf /root/.stack && mv /root/.stack-cache /root/.stack 
 VOLUME /var/hs-forum
 WORKDIR /var/hs-forum
 CMD ["bash", "run-dev.sh"]
