@@ -5,3 +5,4 @@ const Main = (process.env.NODE_ENV === "production")
 document.addEventListener('DOMContentLoaded', function() {
   Main.main();
 });
+

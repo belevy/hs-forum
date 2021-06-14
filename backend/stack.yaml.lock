@@ -21,21 +21,49 @@ packages:
     git: https://github.com/foxhound-systems/hs-obfuscate.git
     pantry-tree:
       size: 859
-      sha256: b1a7a555c8611c630bd120a9e2e26f625c0eff2529497b0bb84a18f1e290decf
-    commit: 5622899514fde50131e674132e3e769bea17b315
+      sha256: 8324e42a650e718e7877a491a79da782df1819db0376790da7b11af13b7e2522
+    commit: 576e31d5b27dcf87f4deacc5dda22f762f08c8e7
   original:
     git: https://github.com/foxhound-systems/hs-obfuscate.git
-    commit: 5622899514fde50131e674132e3e769bea17b315
+    commit: 576e31d5b27dcf87f4deacc5dda22f762f08c8e7
 - completed:
-    hackage: esqueleto-3.4.0.1@sha256:85077c6b11e06e0ac4a5cb07fb6b71448dcd2dc1e9831ea8115cb9090c342500,5869
+    hackage: esqueleto-3.5.0.0@sha256:81f711f4fa7703c04effe583cd2a76ec514f4a900a3340f192ff42e0abcf949f,6083
     pantry-tree:
-      size: 1542
-      sha256: 2cd6bd749fa1c1f9aa9730010a9bd516f4f4edaf9e9c1b3d39b1ad4e163b7ca7
+      size: 2103
+      sha256: 0891aea0f7f3167670c2b75a8190e72acae75a4cd49a78fa6d19a122183dd3db
   original:
-    hackage: esqueleto-3.4.0.1
+    hackage: esqueleto-3.5.0.0
+- completed:
+    hackage: persistent-postgresql-2.13.0.2@sha256:3eb9e98eb53daf812b10df7386b2b495ecbbbd23ab23eb44522c1788a2e00a13,3557
+    pantry-tree:
+      size: 988
+      sha256: 380be8368b82bf99bc761b65e60111aca061ed81efbff08af397ed81184ce2ba
+  original:
+    hackage: persistent-postgresql-2.13.0.2
+- completed:
+    hackage: persistent-2.13.0.2@sha256:edc8c5bd22fb828cf7624c3ce92f4e9c7cf979c6a1d458745d33cd70f06e10fc,6297
+    pantry-tree:
+      size: 5274
+      sha256: 49172d5284066f2d5b6e61697705bca101ec8f3d24987f2308abba470dd2caca
+  original:
+    hackage: persistent-2.13.0.2
+- completed:
+    hackage: persistent-template-2.12.0.0@sha256:7c68de6624ff83e14b674745e1c895dcf7c8676f6f24be131c89e2e4c2fa4510,1008
+    pantry-tree:
+      size: 267
+      sha256: 6d31d8a3bde912d0c8b28d9d18caa77a5a7add42104d8bb109f7cd298f21a78f
+  original:
+    hackage: persistent-template-2.12.0.0
+- completed:
+    hackage: lift-type-0.1.0.1@sha256:6e38e49bf086fd2203346417d96ad2e6c300d8d8f41d222780abdccc7a4e451b,1106
+    pantry-tree:
+      size: 361
+      sha256: 9de4bdc6ce32b78c28b4bce75b5b2e488bf0f875a136ae269a02df804eb94a1a
+  original:
+    hackage: lift-type-0.1.0.1
 snapshots:
 - completed:
-    size: 533252
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/26.yaml
-    sha256: cdbc5db9c1afe80a5998247939027a0c7db92fa0f20b5cd01596ec3da628b622
-  original: lts-16.26
+    size: 565720
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/17/8.yaml
+    sha256: 76bf8992ff8dfe6eda9c02f81866138c2369344d5011ab39ae403457c4448b03
+  original: lts-17.8

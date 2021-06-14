@@ -5,23 +5,13 @@ RUN apt-get update && apt-get install -y \
   libgmp10 \
   libpq-dev
 
-FROM base as stack-base
+FROM base as builder
 RUN apt-get update && apt-get install -y curl
 RUN curl -sSL https://get.haskellstack.org/ | sh
 ENV PATH="/root/.local/bin:${PATH}"
 COPY backend/stack.yaml .
 COPY backend/package.yaml .
 RUN --mount=type=cache,target=/root/.stack --mount=type=cache,target=.stack-work stack build --only-dependencies 
-
-FROM stack-base as dev
-RUN --mount=type=cache,target=/root/.stack --mount=type=cache,target=.stack-work stack install ghcid
-RUN --mount=type=cache,target=/root/.stack mkdir /root/.stack-cache; cd /root/.stack; tar -cf - * | (cd /root/.stack-cache; tar -xf -)
-RUN rm -rf /root/.stack && mv /root/.stack-cache /root/.stack 
-VOLUME /var/hs-forum
-WORKDIR /var/hs-forum
-CMD ["bash", "run-dev.sh"]
-
-FROM stack-base as builder
 COPY backend /var/hs-forum
 WORKDIR /var/hs-forum
 RUN --mount=type=cache,target=/root/.stack --mount=type=cache,target=.stack-work stack install --allow-different-user .

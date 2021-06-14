@@ -7,8 +7,6 @@ maintainer:          "benjaminlevy007@gmail.com"
 copyright:           "2020 Ben Levy"
 
 extra-source-files:
-- README.md
-- ChangeLog.md
 - config.yaml
 
 # Metadata used when publishing your package

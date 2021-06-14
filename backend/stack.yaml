@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-16.26
+resolver: lts-17.8
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -43,8 +43,12 @@ extra-deps:
 - git: https://github.com/belevy/hashids-st.git
   commit: be5d44fdd26187ddbeb285b9ab81d4a4b63ebafa
 - git: https://github.com/foxhound-systems/hs-obfuscate.git
-  commit: 5622899514fde50131e674132e3e769bea17b315
-- esqueleto-3.4.0.1
+  commit: 576e31d5b27dcf87f4deacc5dda22f762f08c8e7 
+- esqueleto-3.5.0.0
+- persistent-postgresql-2.13.0.2
+- persistent-2.13.0.2
+- persistent-template-2.12.0.0
+- lift-type-0.1.0.1
 # Override default flag values for local packages and extra-deps
 # flags: {}
 
