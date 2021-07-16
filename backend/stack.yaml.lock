@@ -27,33 +27,26 @@ packages:
     git: https://github.com/foxhound-systems/hs-obfuscate.git
     commit: 576e31d5b27dcf87f4deacc5dda22f762f08c8e7
 - completed:
-    hackage: esqueleto-3.5.0.0@sha256:81f711f4fa7703c04effe583cd2a76ec514f4a900a3340f192ff42e0abcf949f,6083
+    hackage: esqueleto-3.5.2.1@sha256:2898c6514b69faaf863abee8b74d16c9b5820092dae920345601d555044676be,4858
     pantry-tree:
-      size: 2103
-      sha256: 0891aea0f7f3167670c2b75a8190e72acae75a4cd49a78fa6d19a122183dd3db
+      size: 2355
+      sha256: 5736a816957e743a77a58fd0d7ca285f307fd9a95830077438f986be8d216442
   original:
-    hackage: esqueleto-3.5.0.0
+    hackage: esqueleto-3.5.2.1
 - completed:
-    hackage: persistent-postgresql-2.13.0.2@sha256:3eb9e98eb53daf812b10df7386b2b495ecbbbd23ab23eb44522c1788a2e00a13,3557
+    hackage: persistent-postgresql-2.13.0.3@sha256:43384bf8ed9c931c673e6abb763c8811113d1b7004095faaae1eb42e2cd52d8f,3601
     pantry-tree:
-      size: 988
-      sha256: 380be8368b82bf99bc761b65e60111aca061ed81efbff08af397ed81184ce2ba
+      size: 1059
+      sha256: 2d647a17372e42bc54331cfb35f5a55a71e6854dac8299b7ed6a1c69ae12734d
   original:
-    hackage: persistent-postgresql-2.13.0.2
+    hackage: persistent-postgresql-2.13.0.3
 - completed:
-    hackage: persistent-2.13.0.2@sha256:edc8c5bd22fb828cf7624c3ce92f4e9c7cf979c6a1d458745d33cd70f06e10fc,6297
+    hackage: persistent-2.13.1.1@sha256:c8044134d3001b7a06703c821fece7d071e195979ad0eb02805ffaf099e28a2d,6521
     pantry-tree:
-      size: 5274
-      sha256: 49172d5284066f2d5b6e61697705bca101ec8f3d24987f2308abba470dd2caca
+      size: 5695
+      sha256: 79514f441de0a2361242cdc05d313b3e7876d466b8c735192799a676ec7674f0
   original:
-    hackage: persistent-2.13.0.2
-- completed:
-    hackage: persistent-template-2.12.0.0@sha256:7c68de6624ff83e14b674745e1c895dcf7c8676f6f24be131c89e2e4c2fa4510,1008
-    pantry-tree:
-      size: 267
-      sha256: 6d31d8a3bde912d0c8b28d9d18caa77a5a7add42104d8bb109f7cd298f21a78f
-  original:
-    hackage: persistent-template-2.12.0.0
+    hackage: persistent-2.13.1.1
 - completed:
     hackage: lift-type-0.1.0.1@sha256:6e38e49bf086fd2203346417d96ad2e6c300d8d8f41d222780abdccc7a4e451b,1106
     pantry-tree:
@@ -61,6 +54,13 @@ packages:
       sha256: 9de4bdc6ce32b78c28b4bce75b5b2e488bf0f875a136ae269a02df804eb94a1a
   original:
     hackage: lift-type-0.1.0.1
+- completed:
+    hackage: eved-0.0.2.1@sha256:3ee7989766b8bb2b662e2ddca52458e6a2330298f146ad4b34e2cae476c5e4a4,1632
+    pantry-tree:
+      size: 833
+      sha256: 7b148d1c92d0b23cc3885df9ecbf077fa19e619efb2d7159254706d988b7b61d
+  original:
+    hackage: eved-0.0.2.1
 snapshots:
 - completed:
     size: 565720

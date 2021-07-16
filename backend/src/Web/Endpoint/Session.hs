@@ -1,42 +1,65 @@
+{-# LANGUAGE OverloadedLists   #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Web.Endpoint.Session
   ( Api
   , server
+  , api
   ) where
 
-import Servant
-import Web.Auth
-import Web.AppHandler
-import Domain.Types.SessionData as Session
-import DB.User
-import DB.Session
-import Data.UserCredentials
-import Env
-import Control.Monad.Reader (asks)
-import Web.Errors
-import Database.Persist (Entity(..))
-import Web.Cookie
-import Web.Servant.Csrf
-import Web.Servant.Obfuscate
+import           Control.Monad.Reader     (asks)
+import           DB.Session
+import           DB.User
+import           Data.ByteString.Builder  as Builder
+import           Data.ByteString.Lazy     as LBS
+import           Data.UserCredentials
+import           Database.Persist         (Entity (..))
+import           Domain.Types.SessionData as Session
+import           Env
+import           Web.AppHandler
+import           Web.Auth
+import           Web.Cookie
+import           Web.Errors
+import           Web.Servant.Csrf
+import           Web.Servant.Obfuscate
 
-type Api = "sessions" :> 
-  (     "me" :> Protected :> Get '[JSON] (WithCSRFToken SessionResponse)
-   :<|> "csrf-token" :> Protected :> Get '[JSON] (WithCSRFToken ())
-   :<|> ReqBody '[JSON] UserCredentials :> Post '[JSON] (Headers '[CSRFTokenCookie, Header "Set-Cookie" SetCookie] ())
-  )
+import           Control.Monad.Reader     (MonadReader)
+import           Web.Eved                 hiding (server)
+import           Web.Eved.Auth            (AuthScheme, EvedAuth (..), auth)
+import qualified Web.Eved.ContentType     as CT
 
-server :: AppServer Api
-server = currentSession :<|> getCsrfToken :<|> login
+type Api m =
+      (SessionData -> m SessionResponse)
+ :<|> (UserCredentials -> m (CT.WithHeaders ()))
+
+api :: ( MonadReader ctx r
+       , HasAuthScheme ctx SessionData
+       , Eved api m
+       , EvedAuth api
+       ) => r (api (Api m))
+api =
+    lit "sessions" .</>
+      (     (lit "me" .</> protected .</> get [CT.json])
+      -- :<|> "csrf-token" :> Protected :> Get '[JSON] (WithCSRFToken ())
+       .<|> (reqBody [CT.json] .</> post [CT.withHeaders CT.json])
+      )
+
+server :: Api AppHandler
+server = currentSession :<|> login
   where
-    currentSession :: SessionData -> AppHandler (WithCSRFToken SessionResponse)
-    currentSession session = addCsrfToken $ Session.fromModel session
-  
+    currentSession :: SessionData -> AppHandler SessionResponse
+    currentSession session =
+        pure $ Session.fromModel session
+
     getCsrfToken :: SessionData -> AppHandler (WithCSRFToken ())
     getCsrfToken _ = addCsrfToken ()
 
-    login :: UserCredentials -> AppHandler (WithCSRFToken (Headers '[Header "Set-Cookie" SetCookie] ()))
+    login :: UserCredentials -> AppHandler (CT.WithHeaders ())
     login creds = do
       conn <- asks redisConn
-      mUser <- runDB $ fetchAndVerifyUser creds
+      mUser <- runDB $ findAndVerifyUser creds
       user <- maybeThrowError err403 mUser
       sessionCookie <- createSession conn (entityVal user) (60*60*24*30)
-      addCsrfToken $ addHeader sessionCookie ()
+      pure $ CT.addHeaders [
+        ("Set-Cookie", LBS.toStrict $ Builder.toLazyByteString $ renderSetCookie sessionCookie)
+       ] ()

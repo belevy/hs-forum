@@ -36,7 +36,6 @@ dependencies:
 - obfuscate
 - persistent
 - persistent-postgresql
-- persistent-template
 - pureMD5
 - random
 - resource-pool
@@ -55,6 +54,7 @@ dependencies:
 - wai
 - warp
 - yaml
+- eved
 
 default-extensions:
 - DataKinds

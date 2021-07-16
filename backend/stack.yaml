@@ -44,11 +44,12 @@ extra-deps:
   commit: be5d44fdd26187ddbeb285b9ab81d4a4b63ebafa
 - git: https://github.com/foxhound-systems/hs-obfuscate.git
   commit: 576e31d5b27dcf87f4deacc5dda22f762f08c8e7 
-- esqueleto-3.5.0.0
-- persistent-postgresql-2.13.0.2
-- persistent-2.13.0.2
-- persistent-template-2.12.0.0
+- esqueleto-3.5.2.1
+- persistent-postgresql-2.13.0.3
+- persistent-2.13.1.1
 - lift-type-0.1.0.1
+- eved-0.0.2.1
+
 # Override default flag values for local packages and extra-deps
 # flags: {}
 

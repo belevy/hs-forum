@@ -1,2 +1,8 @@
 cradle:
    stack:
+       - path: "./src"
+         component: "hs-forum:lib"
+       - path: "./test"
+         component: "hs-forum:test"
+       - path: "./app"
+         component: "hs-forum:exe"

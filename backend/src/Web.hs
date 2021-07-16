@@ -1,46 +1,53 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE TemplateHaskell    #-}
 
 module Web where
 
-import Servant
-import qualified Network.Wai.Handler.Warp as Warp
 import qualified Config
-import Env
-import Web.AppHandler
-import qualified Web.Endpoint.Forum as Forum
-import qualified Web.Endpoint.Session as Session
-import qualified Web.Endpoint.User as User
-import Web.Auth
-import Hashids
-import Data.Aeson
-import Web.Obfuscate
+import           Data.Aeson
+import           Env
+import           Hashids
+import qualified Network.Wai              as Wai
+import qualified Network.Wai.Handler.Warp as Warp
+import           Web.AppHandler
+import           Web.Auth
+import qualified Web.Endpoint.Forum       as Forum
+import qualified Web.Endpoint.Session     as Session
+import qualified Web.Endpoint.User        as User
+import           Web.Obfuscate
 
-type Api = Session.Api 
-      :<|> Forum.Api
-      :<|> User.Api
+import           Control.Monad.Reader     (MonadReader)
+import           Domain.Types.SessionData (SessionData (..))
+import           Web.Eved
+import           Web.Eved.Auth
 
-server :: AppServer Api 
-server = Session.server :<|> Forum.server :<|> User.server
+type Api m =
+           Session.Api m
+      :<|> Forum.Api m
+     --  :<|> User.Api
 
-api :: Proxy Api
-api = Proxy
+api ::
+    ( Eved api m
+    , EvedAuth api
+    , MonadReader ctx r
+    , HasAuthScheme ctx SessionData
+    ) => r (api (Api m))
+api = Session.api .<|> Forum.api -- :<|> User.api
 
-mkApp :: Config.Config -> IO Application
-mkApp config = 
-  withEnv config $ \env -> 
+handler :: Api AppHandler
+handler = Session.server :<|> Forum.server -- :<|> User.server
+
+mkApp :: Config.Config -> IO Wai.Application
+mkApp config =
+  withEnv config $ \env ->
   let Right hashidsCtx = mkHashidsContext "" 6 defaultAlphabet
-      context = authHandler env :. hashidsCtx :. EmptyContext
-      contextProxy = Proxy @'[SessionAuthHandler, HashidsContext]
-  in do 
-    pure $ serveWithContext api context
-         $ hoistServerWithContext api contextProxy (runAppHandler env) server
-           
+  in pure $ server (runAppHandler env) handler (api (sessionAuth env))
+
 runApp :: IO ()
 runApp = do
     config <- Config.loadConfigFile
     app <- mkApp config
     putStrLn $ "Running on " <> (show $ Config.configPort config)
-    Warp.run (Config.configPort config) app 
+    Warp.run (Config.configPort config) app

@@ -1,17 +1,17 @@
 {-# LANGUAGE DeriveAnyClass #-}
 module DB.User where
 
-import Control.Monad.IO.Class (MonadIO)
-import Control.Exception (Exception)
-import Control.Monad.Except
-import Database.Esqueleto.Extended
-import Data.Text (Text)
-import Data.Time.Clock
+import           Control.Exception           (Exception)
+import           Control.Monad.Except
+import           Control.Monad.IO.Class      (MonadIO)
+import           Data.Text                   (Text)
+import           Data.Time.Clock
+import           Database.Esqueleto.Extended
 
-import Data.UserCredentials 
-import DB.Model.User
+import           DB.Model.User
+import           Data.UserCredentials
 
-data UserRegistrationError 
+data UserRegistrationError
   = UserAlreadyExists
   | BcryptFailure
   | DatabaseFailed
@@ -20,7 +20,7 @@ data UserRegistrationError
 
 registerUser :: MonadIO m => UserCredentials -> SqlPersistT m (Either UserRegistrationError (Entity User))
 registerUser credentials = runExceptT $ do
-  mUser <- lift $ fetchUserByUsername (ucUserName credentials)
+  mUser <- lift $ findUserByUsername (ucUserName credentials)
   _ <- throwErrorIfExists UserAlreadyExists mUser
   newUser <- maybeToError BcryptFailure =<< credentialsToModel credentials
   lift $ insertEntity newUser
@@ -32,23 +32,23 @@ registerUser credentials = runExceptT $ do
         maybe (pure ()) (\_ -> throwError err)
 
 
-fetchUserByUsername :: MonadIO m => Text -> SqlReadT m (Maybe (Entity User))
-fetchUserByUsername userName = 
-    selectFirst $ do 
-    users <- from $ Table @User
+findUserByUsername :: MonadIO m => Text -> SqlReadT m (Maybe (Entity User))
+findUserByUsername userName =
+    selectFirst $ do
+    users <- from $ table @User
     where_ $ users ^. UserUserName ==. val userName
     pure users
-  
-fetchUserByUserId :: MonadIO m => UserId -> SqlReadT m (Maybe (Entity User))
-fetchUserByUserId userId =
-    selectFirst $ do 
-    users <- from $ Table @User
+
+findUserByUserId :: MonadIO m => UserId -> SqlReadT m (Maybe (Entity User))
+findUserByUserId userId =
+    selectFirst $ do
+    users <- from $ table @User
     where_ $ users ^. UserId ==. val userId
     pure users
 
-fetchAndVerifyUser :: MonadIO m => UserCredentials -> SqlPersistT m (Maybe (Entity User))
-fetchAndVerifyUser credentials = do
-  mUser <- fetchUserByUsername (ucUserName credentials)
+findAndVerifyUser :: MonadIO m => UserCredentials -> SqlPersistT m (Maybe (Entity User))
+findAndVerifyUser credentials = do
+  mUser <- findUserByUsername (ucUserName credentials)
   pure $ verifiedUser =<< mUser
 
   where

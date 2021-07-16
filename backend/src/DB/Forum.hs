@@ -1,27 +1,31 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE OverloadedLabels   #-}
+{-# LANGUAGE RecordWildCards    #-}
 
 module DB.Forum
   where
 
-import Control.Monad
-import Control.Monad.IO.Class
-import qualified Data.Maybe as Maybe
-import Data.Int
-import Database.Esqueleto.Extended
-import qualified Data.Text as T
-import Data.Time.Clock
-import UnliftIO (handle, SomeException(..), Exception(..), throwIO, MonadUnliftIO)
+import           Control.Exception.Extended
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Data.Int
+import qualified Data.Maybe                  as Maybe
+import qualified Data.Text                   as T
+import           Data.Time.Clock
+import           Database.Esqueleto.Extended
+import           UnliftIO                    (Exception (..), MonadUnliftIO,
+                                              SomeException (..), handle,
+                                              throwIO)
 
-import DB.Model.Forum
-import DB.Model.ForumPost
-import DB.Model.User
-import DB.Model.UserRole
-import DB.Model.RoleType
-import DB.Model.Vote
-import DB.QueryCombinators
-import DB.User
+import           DB.Model.Forum
+import           DB.Model.ForumPost
+import           DB.Model.RoleType
+import           DB.Model.User
+import           DB.Model.UserRole
+import           DB.Model.Vote
+import           DB.QueryCombinators
+import           DB.User
 
 type ForumResult = (Entity Forum, Entity User, [Entity User])
 
@@ -38,8 +42,8 @@ getForumAdmins :: MonadIO m => ForumId -> SqlReadT m [Entity User]
 getForumAdmins forumId =
   select $ do
     (users :& roles) <-
-      from $ Table @User
-      `InnerJoin` Table @UserRole
+      from $ table @User
+      `innerJoin` table @UserRole
       `on` (\(users :& roles) ->
             users ^. UserId ==. roles ^. UserRoleUserId)
     where_ $ roles ^. UserRoleRoleType ==. val Administrator
@@ -50,7 +54,7 @@ getForumById :: MonadIO m => ForumId -> SqlReadT m (Maybe ForumResult)
 getForumById forumId = do
   mForum <- selectFirst $ do
     (forums, users) <- allForums
-    where_ $ forums ^. ForumId ==. val forumId
+    where_ $ forums ^. #id ==. val forumId
     pure (forums, users)
   admins <- getForumAdmins forumId
   pure $ mForum >>= (\(forum,creator) -> pure (forum, creator, admins))
@@ -69,8 +73,8 @@ getTopPostsInForum forumId pageSize page = do
 allForums :: SqlQuery (SqlExpr (Entity Forum), SqlExpr (Entity User))
 allForums = do
   (forums :& users) <-
-    from $ Table @Forum
-    `InnerJoin` Table @User
+    from $ table @Forum
+    `innerJoin` table @User
     `on` (\(forums :& users) ->
           forums ^. ForumCreator ==. users ^. UserId)
   pure (forums, users)
@@ -78,14 +82,14 @@ allForums = do
 topPostsQuery :: SqlQuery (SqlExpr (Entity Forum), SqlExpr (Entity ForumPost), SqlExpr (Entity User), SqlExpr (Value Int))
 topPostsQuery = do
   (forum :& posts :& users :& votes) <-
-    from $ Table @Forum
-    `InnerJoin` Table @ForumPost
+    from $ table @Forum
+    `innerJoin` table @ForumPost
     `on` (\(forum :& posts) ->
         forum ^. ForumId ==. posts ^. ForumPostForumId)
-    `InnerJoin` Table @User
+    `innerJoin` table @User
     `on` (\(_ :& posts :& users) ->
           posts ^. ForumPostAuthorId ==. users ^. UserId)
-    `LeftOuterJoin` Table @Vote
+    `leftJoin` table @Vote
     `on` (\(_ :& posts :& _ :& votes) ->
             just (posts ^. ForumPostId) ==. votes ?. VotePostId)
   groupBy (posts ^. ForumPostId, users ^. UserId)
@@ -94,13 +98,13 @@ topPostsQuery = do
   pure (forum, posts, users, voteTotal)
 
 data CreateForumData = CreateForumData
-  { cfdUser :: User
-  , cfdForumName :: T.Text
-  , cfdForumDescription :: T.Text
+  { cfdUser                :: User
+  , cfdForumName           :: T.Text
+  , cfdForumDescription    :: T.Text
   , cfdForumAdministrators :: [UserId]
   }
 
-data ForumCreationError 
+data ForumCreationError
   = CreatorNotFound
   | FailedToInsertForum
   | FailedToInsertAdministrator
@@ -110,8 +114,8 @@ data ForumCreationError
 createForum :: MonadUnliftIO m => CreateForumData -> SqlPersistT m ForumId
 createForum CreateForumData{..} = do
   now <- liftIO getCurrentTime
-  creator <- (maybe (throwIO CreatorNotFound) pure) =<< fetchUserByUsername (userUserName cfdUser)
-  forumId <- insertOrThrow FailedToInsertForum $ 
+  creator <- maybe (throwIO CreatorNotFound) pure =<< findUserByUsername (userUserName cfdUser)
+  forumId <- insertOrThrow FailedToInsertForum $
     Forum
       { forumName = cfdForumName
       , forumDescription = cfdForumDescription
@@ -120,15 +124,15 @@ createForum CreateForumData{..} = do
       , forumUpdatedAt = Nothing
       , forumDeletedAt = Nothing
       }
-  forM_ cfdForumAdministrators $ \userId -> 
-    insertOrThrow FailedToInsertAdministrator $ 
-      UserRole 
+  forM_ cfdForumAdministrators $ \userId ->
+    insertOrThrow FailedToInsertAdministrator $
+      UserRole
         { userRoleUserId = userId
-        , userRoleForumId = forumId 
+        , userRoleForumId = forumId
         , userRoleRoleType = Administrator
         }
   pure forumId
 
   where
     insertOrThrow err r =
-      handle (\(SomeException _) -> throwIO err) $ insert r
+      mapException (\(SomeException _) -> err) $ insert r

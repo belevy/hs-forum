@@ -1,21 +1,21 @@
+{-# LANGUAGE QuasiQuotes     #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE QuasiQuotes #-}
 module DB.Model.Vote where
 
-import Database.Persist
-import Database.Persist.TH
-import Database.Persist.Sql
-import Data.Text
-import Data.Time.Clock
+import           Data.Text
+import           Data.Time.Clock
+import           Database.Persist
+import           Database.Persist.Sql
+import           Database.Persist.TH
 
-import DB.Model.User
-import DB.Model.ForumPost
+import           DB.Model.ForumPost
+import           DB.Model.User
 
-share [mkPersist sqlSettings] [persistLowerCase|
+share [mkPersist sqlSettings, mkMigrate "mirateVote"] [persistLowerCase|
   Vote sql=votes
     voterId UserId
     postId ForumPostId
-    value Int 
+    value Int
     createdAt UTCTime
     deletedAt UTCTime Maybe
     deriving Show

@@ -1,93 +1,114 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Web.Endpoint.Forum
   where
 
-import Servant
-import Data.Int
+import           Data.Int
 
-import Web.Obfuscate
-import Web.AppHandler
-import Web.Errors
-import Web.Auth
-import Web.Servant.Csrf
-import Web.Servant.Obfuscate
+import           Web.AppHandler
+import           Web.Auth
+import           Web.Errors
+import           Web.Obfuscate
+import           Web.Servant.Csrf
+import           Web.Servant.Obfuscate
 
-import Data.PaginatedResponse
+import           Control.Monad.Reader            (MonadReader)
+import           Web.Eved
+import           Web.Eved.Auth
+import qualified Web.Eved.ContentType            as CT
+import qualified Web.Eved.QueryParam             as QP
+import qualified Web.Eved.UrlElement             as UE
 
-import DB.Model.Forum
-import Domain.Types.SessionData as SessionData
-import Domain.Types.ForumPostResponse as ForumPostResponse
-import Domain.Types.ForumResponse as ForumResponse
-import Domain.Types.CreateForumRequest as CreateForumRequest
+import           Data.PaginatedResponse
 
-import qualified UseCase.Forum.CreateForum as CreateForum 
-import qualified UseCase.Forum.ListForums as ListForums
-import qualified UseCase.Forum.GetForum as GetForum
-import qualified UseCase.Forum.ListForumPosts as ListForumPosts
+import           DB.Model.Forum
+import           Domain.Types.CreateForumRequest as CreateForumRequest
+import           Domain.Types.ForumPostResponse  as ForumPostResponse
+import           Domain.Types.ForumResponse      as ForumResponse
+import           Domain.Types.SessionData        as SessionData
 
-type Api = "forums" :> (ListForums :<|> GetForum :<|> GetForumPosts :<|> CreateForum)
+import qualified UseCase.Forum.CreateForum       as CreateForum
+import qualified UseCase.Forum.GetForum          as GetForum
+import qualified UseCase.Forum.ListForumPosts    as ListForumPosts
+import qualified UseCase.Forum.ListForums        as ListForums
 
-type ListForums
-        = Protected
-        :> QueryParam "pageSize" Int64
-        :> QueryParam "page" Int64
-        :> Obfuscate :> Get '[JSON] (WithCSRFToken (PaginatedResponse ForumResponse))
 
-type GetForum
-        = Protected
-        :> Obfuscate :> Capture "forumId" ForumId
-        :> Obfuscate :> Get '[JSON] (WithCSRFToken ForumResponse)
+type Api m =
+       (SessionData -> Int64 -> Int64 -> m (PaginatedResponse ForumResponse))
+  :<|> (SessionData -> ForumId -> m ForumResponse)
+  :<|> (SessionData -> ForumId -> Int64 -> Int64 -> m (PaginatedResponse ForumPostResponse))
+  :<|> (SessionData -> CreateForumRequest -> m ForumResponse)
 
-type GetForumPosts
-        = Protected
-        :> Obfuscate :> Capture "forumId" ForumId
-        :> "posts"
-        :> QueryParam "pageSize" Int64
-        :> QueryParam "page" Int64
-        :> Obfuscate :> Get '[JSON] (WithCSRFToken (PaginatedResponse ForumPostResponse))
+api :: ( MonadReader ctx r
+       , Eved api m
+       , EvedAuth api
+       , HasAuthScheme ctx SessionData
+       ) => r (api (Api m))
+api = lit "forums" .</> (listForumsApi .<|> getForumApi .<|> getForumPostsApi .<|> createForumApi)
+  where
+    pagination next =
+            queryParam "pageSize" (QP.defaulted 25 (QP.auto @_ @Int64))
+       .</> queryParam "page" (QP.defaulted 1 (QP.auto @_ @Int64))
+       .</> next
 
-type CreateForum
-        = Protected
-        :> CheckCSRF
-        :> Obfuscate :> ReqBody '[JSON] CreateForumRequest
-        :> Obfuscate :> Post '[JSON] (WithCSRFToken ForumResponse)
+    listForumsApi =
+        protected
+        .</> pagination
+        .</> get [CT.json @(PaginatedResponse ForumResponse)]
 
-server :: AppServer Api
+    getForumApi =
+        protected
+        .</> capture "forumId" (UE.auto @ForumId)
+        .</> get [CT.json @ForumResponse]
+
+    getForumPostsApi =
+        protected
+        .</> capture "forumId" (UE.auto @ForumId)
+        .</> pagination
+        .</> get [CT.json @(PaginatedResponse ForumPostResponse)]
+
+    createForumApi =
+        protected
+        .</> reqBody [CT.json @CreateForumRequest]
+        .</> post [CT.json @ForumResponse]
+
+
+server :: Api AppHandler
 server = listForums :<|> getForum :<|> getForumPosts :<|> createForum
   where
     listForums :: SessionData
-               -> Maybe Int64
-               -> Maybe Int64
-               -> AppHandler (WithCSRFToken (PaginatedResponse ForumResponse))
-    listForums session mPageSize mPage = do
-      addCsrfToken =<< 
+               -> Int64
+               -> Int64
+               -> AppHandler (PaginatedResponse ForumResponse)
+    listForums session pageSize page = do
+      -- addCsrfToken =<<
         ListForums.execute (ListForums.Config
           { ListForums.configSession = session
-          , ListForums.configPageSize = mPageSize
-          , ListForums.configPageNumber = mPage
+          , ListForums.configPageSize = Just pageSize
+          , ListForums.configPageNumber = Just page
           })
 
-    getForum :: SessionData -> ForumId -> AppHandler (WithCSRFToken ForumResponse)
+    getForum :: SessionData -> ForumId -> AppHandler ForumResponse
     getForum sessionData forumId = do
       GetForum.execute sessionData forumId
         >>= maybeNotFound
-        >>= addCsrfToken
+        -- >>= addCsrfToken
 
     getForumPosts :: SessionData
                   -> ForumId
-                  -> Maybe Int64
-                  -> Maybe Int64
-                  -> AppHandler (WithCSRFToken (PaginatedResponse ForumPostResponse))
-    getForumPosts session forumId mPageSize mPage = do
-      addCsrfToken =<< 
+                  -> Int64
+                  -> Int64
+                  -> AppHandler (PaginatedResponse ForumPostResponse)
+    getForumPosts session forumId pageSize page = do
+      --addCsrfToken =<<
         ListForumPosts.execute (ListForumPosts.Config
           { ListForumPosts.configForumId = forumId
           , ListForumPosts.configSession = session
-          , ListForumPosts.configPageSize = mPageSize
-          , ListForumPosts.configPageNumber = mPage
+          , ListForumPosts.configPageSize = Just pageSize
+          , ListForumPosts.configPageNumber = Just page
           })
 
-    createForum :: SessionData -> CreateForumRequest -> AppHandler (WithCSRFToken ForumResponse)
-    createForum session request = 
-      CreateForum.execute session request >>= addCsrfToken
+    createForum :: SessionData -> CreateForumRequest -> AppHandler ForumResponse
+    createForum session request =
+      CreateForum.execute session request -- >>= addCsrfToken
