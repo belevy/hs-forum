@@ -9,6 +9,7 @@ import           Data.Int
 import           Web.AppHandler
 import           Web.Auth
 import           Web.Errors
+import           Web.HttpApiData
 import           Web.Obfuscate
 import           Web.Servant.Csrf
 import           Web.Servant.Obfuscate
@@ -17,6 +18,7 @@ import           Control.Monad.Reader            (MonadReader)
 import           Web.Eved
 import           Web.Eved.Auth
 import qualified Web.Eved.ContentType            as CT
+import           Web.Eved.Obfuscate
 import qualified Web.Eved.QueryParam             as QP
 import qualified Web.Eved.UrlElement             as UE
 
@@ -34,54 +36,76 @@ import qualified UseCase.Forum.ListForumPosts    as ListForumPosts
 import qualified UseCase.Forum.ListForums        as ListForums
 
 
+
+newtype PageSize = PageSize Int64
+    deriving newtype (Eq, Ord, Num, ToHttpApiData, FromHttpApiData)
+newtype PageNumber = PageNumber Int64
+    deriving newtype (Eq, Ord, Num, ToHttpApiData, FromHttpApiData)
+
 type Api m =
-       (SessionData -> Int64 -> Int64 -> m (PaginatedResponse ForumResponse))
-  :<|> (SessionData -> ForumId -> m ForumResponse)
-  :<|> (SessionData -> ForumId -> Int64 -> Int64 -> m (PaginatedResponse ForumPostResponse))
-  :<|> (SessionData -> CreateForumRequest -> m ForumResponse)
+         ListForums m
+    :<|> GetForum m
+    :<|> ListForumPosts m
+    :<|> CreateForum m
+
+type ListForums m =
+    SessionData -> PageSize -> PageNumber -> m (PaginatedResponse ForumResponse)
+type GetForum m =
+    SessionData -> ForumId -> m ForumResponse
+type ListForumPosts m =
+    SessionData -> ForumId -> PageSize -> PageNumber -> m (PaginatedResponse ForumPostResponse)
+type CreateForum m =
+    SessionData -> CreateForumRequest -> m ForumResponse
 
 api :: ( MonadReader ctx r
        , Eved api m
        , EvedAuth api
        , HasAuthScheme ctx SessionData
+       , HasHashidsContext ctx
        ) => r (api (Api m))
-api = lit "forums" .</> (listForumsApi .<|> getForumApi .<|> getForumPostsApi .<|> createForumApi)
+api =
+    lit "forums" .</>
+          (    listForumsApi
+          .<|> getForumApi
+          .<|> getForumPostsApi
+          .<|> createForumApi
+          )
   where
-    pagination next =
-            queryParam "pageSize" (QP.defaulted 25 (QP.auto @_ @Int64))
-       .</> queryParam "page" (QP.defaulted 1 (QP.auto @_ @Int64))
+    forumIdUE =
+        obfuscateUE @ForumId
+
+    pagination next = do
+            queryParam "pageSize" (QP.defaulted 25 (QP.auto @_ @PageSize))
+       .</> queryParam "page" (QP.defaulted 1 (QP.auto @_ @PageNumber))
        .</> next
 
     listForumsApi =
         protected
         .</> pagination
-        .</> get [CT.json @(PaginatedResponse ForumResponse)]
+        .</> get [obfuscatedJSON @(PaginatedResponse ForumResponse)]
 
     getForumApi =
         protected
-        .</> capture "forumId" (UE.auto @ForumId)
-        .</> get [CT.json @ForumResponse]
+        .</> capture "forumId" forumIdUE
+        .</> get [obfuscatedJSON @ForumResponse]
 
     getForumPostsApi =
         protected
-        .</> capture "forumId" (UE.auto @ForumId)
+        .</> capture "forumId" forumIdUE
         .</> pagination
-        .</> get [CT.json @(PaginatedResponse ForumPostResponse)]
+        .</> get [obfuscatedJSON @(PaginatedResponse ForumPostResponse)]
 
     createForumApi =
         protected
-        .</> reqBody [CT.json @CreateForumRequest]
-        .</> post [CT.json @ForumResponse]
+        .</> reqBody [obfuscatedJSON @CreateForumRequest]
+        .</> post [obfuscatedJSON @ForumResponse]
 
 
 server :: Api AppHandler
 server = listForums :<|> getForum :<|> getForumPosts :<|> createForum
   where
-    listForums :: SessionData
-               -> Int64
-               -> Int64
-               -> AppHandler (PaginatedResponse ForumResponse)
-    listForums session pageSize page = do
+    listForums :: ListForums AppHandler
+    listForums session (PageSize pageSize) (PageNumber page) = do
       -- addCsrfToken =<<
         ListForums.execute (ListForums.Config
           { ListForums.configSession = session
@@ -89,18 +113,14 @@ server = listForums :<|> getForum :<|> getForumPosts :<|> createForum
           , ListForums.configPageNumber = Just page
           })
 
-    getForum :: SessionData -> ForumId -> AppHandler ForumResponse
+    getForum :: GetForum AppHandler
     getForum sessionData forumId = do
       GetForum.execute sessionData forumId
         >>= maybeNotFound
         -- >>= addCsrfToken
 
-    getForumPosts :: SessionData
-                  -> ForumId
-                  -> Int64
-                  -> Int64
-                  -> AppHandler (PaginatedResponse ForumPostResponse)
-    getForumPosts session forumId pageSize page = do
+    getForumPosts :: ListForumPosts AppHandler
+    getForumPosts session forumId (PageSize pageSize) (PageNumber page) = do
       --addCsrfToken =<<
         ListForumPosts.execute (ListForumPosts.Config
           { ListForumPosts.configForumId = forumId
@@ -109,6 +129,6 @@ server = listForums :<|> getForum :<|> getForumPosts :<|> createForum
           , ListForumPosts.configPageNumber = Just page
           })
 
-    createForum :: SessionData -> CreateForumRequest -> AppHandler ForumResponse
+    createForum :: CreateForum AppHandler
     createForum session request =
       CreateForum.execute session request -- >>= addCsrfToken

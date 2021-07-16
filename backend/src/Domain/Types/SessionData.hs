@@ -1,15 +1,15 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Domain.Types.SessionData where
 
-import Data.Aeson as A
-import Data.Aeson.TH
-import DB.Model.User
-import qualified Data.Text as T
-import qualified Data.ByteString as BS 
-import qualified Data.ByteString.Lazy as LBS 
-import Web.Obfuscate
+import           DB.Model.User
+import           Data.Aeson           as A
+import           Data.Aeson.TH
+import qualified Data.ByteString      as BS
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Text            as T
+import           Web.Obfuscate
 
-data SessionData = SessionData 
+data SessionData = SessionData
   { sessionUser :: User }
 
 data SessionResponse = SessionResponse
@@ -22,7 +22,7 @@ fromModel session = SessionResponse
   }
 
 encode :: SessionData -> BS.ByteString
-encode = LBS.toStrict . A.encode 
+encode = LBS.toStrict . A.encode
 
 decode :: BS.ByteString -> Maybe SessionData
 decode = A.decodeStrict

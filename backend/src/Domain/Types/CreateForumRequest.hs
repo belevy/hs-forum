@@ -19,5 +19,4 @@ data CreateForumRequest = CreateForumRequest
   }
 
 $(deriveObfuscate defaultObfuscationOptions ''CreateForumRequest)
-$(deriveFromJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "obcfr")} 'ObfuscatedCreateForumRequest)
-$(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "cfr")} 'CreateForumRequest)
+$(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "obcfr")} 'ObfuscatedCreateForumRequest)

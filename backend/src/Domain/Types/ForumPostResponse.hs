@@ -35,4 +35,3 @@ fromModel (post, author, votes) =
 
 $(deriveObfuscate defaultObfuscationOptions ''ForumPostResponse)
 $(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "obfpr")} 'ObfuscatedForumPostResponse)
-$(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "fpr")} 'ForumPostResponse)

@@ -22,6 +22,7 @@ import           Control.Monad.Reader     (MonadReader)
 import           Domain.Types.SessionData (SessionData (..))
 import           Web.Eved
 import           Web.Eved.Auth
+import           Web.Eved.Obfuscate
 
 type Api m =
            Session.Api m
@@ -33,17 +34,30 @@ api ::
     , EvedAuth api
     , MonadReader ctx r
     , HasAuthScheme ctx SessionData
+    , HasHashidsContext ctx
     ) => r (api (Api m))
 api = Session.api .<|> Forum.api -- :<|> User.api
 
 handler :: Api AppHandler
 handler = Session.server :<|> Forum.server -- :<|> User.server
 
+newtype ServerContext = ServerContext (AuthScheme SessionData, HashidsContext)
+
+instance HasAuthScheme ServerContext SessionData where
+    getAuthScheme (ServerContext (x,_)) = x
+
+instance HasHashidsContext ServerContext where
+    getHashidsContext (ServerContext (_,x)) = x
+
+mkServerContext :: Env -> ServerContext
+mkServerContext env =
+  let Right hashidsCtx = mkHashidsContext "" 6 defaultAlphabet
+  in ServerContext (sessionAuth env, hashidsCtx)
+
 mkApp :: Config.Config -> IO Wai.Application
 mkApp config =
   withEnv config $ \env ->
-  let Right hashidsCtx = mkHashidsContext "" 6 defaultAlphabet
-  in pure $ server (runAppHandler env) handler (api (sessionAuth env))
+  pure $ server (runAppHandler env) handler (api (mkServerContext env))
 
 runApp :: IO ()
 runApp = do

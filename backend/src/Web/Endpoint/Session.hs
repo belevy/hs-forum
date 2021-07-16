@@ -7,7 +7,6 @@ module Web.Endpoint.Session
   , api
   ) where
 
-import           Control.Monad.Reader     (asks)
 import           DB.Session
 import           DB.User
 import           Data.ByteString.Builder  as Builder
@@ -23,7 +22,7 @@ import           Web.Errors
 import           Web.Servant.Csrf
 import           Web.Servant.Obfuscate
 
-import           Control.Monad.Reader     (MonadReader)
+import           Control.Monad.Reader
 import           Web.Eved                 hiding (server)
 import           Web.Eved.Auth            (AuthScheme, EvedAuth (..), auth)
 import qualified Web.Eved.ContentType     as CT

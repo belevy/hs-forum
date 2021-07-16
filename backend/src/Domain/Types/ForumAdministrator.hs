@@ -26,4 +26,3 @@ fromModel (Entity userId user) =
 
 $(deriveObfuscate defaultObfuscationOptions ''ForumAdministrator)
 $(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "obfa")} 'ObfuscatedForumAdministrator)
-$(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "fa")} 'ForumAdministrator)

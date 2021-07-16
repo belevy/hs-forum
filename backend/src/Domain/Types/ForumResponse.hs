@@ -38,5 +38,4 @@ fromModel (Entity forumId forum, creator, admins) =
     }
 
 $(deriveObfuscate defaultObfuscationOptions ''ForumResponse)
-$(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "obfr")} 'ForumResponse)
-$(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "fr")} 'ObfuscatedForumResponse)
+$(deriveJSON defaultOptions{fieldLabelModifier = camelTo2 '_' . drop (T.length "obfr")} 'ObfuscatedForumResponse)
