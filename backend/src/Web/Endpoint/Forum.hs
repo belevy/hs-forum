@@ -6,18 +6,20 @@ module Web.Endpoint.Forum
 
 import           Data.Int
 
+import Data.Text (Text)
+import UnliftIO.Exception
+
 import           Web.AppHandler
 import           Web.Auth
 import           Web.Errors
 import           Web.HttpApiData
 import           Web.Obfuscate
-import           Web.Servant.Csrf
-import           Web.Servant.Obfuscate
 
 import           Control.Monad.Reader            (MonadReader)
 import           Web.Eved
 import           Web.Eved.Auth
 import qualified Web.Eved.ContentType            as CT
+import           Web.Eved.Csrf
 import           Web.Eved.Obfuscate
 import qualified Web.Eved.QueryParam             as QP
 import qualified Web.Eved.UrlElement             as UE
@@ -34,8 +36,6 @@ import qualified UseCase.Forum.CreateForum       as CreateForum
 import qualified UseCase.Forum.GetForum          as GetForum
 import qualified UseCase.Forum.ListForumPosts    as ListForumPosts
 import qualified UseCase.Forum.ListForums        as ListForums
-
-
 
 newtype PageSize = PageSize Int64
     deriving newtype (Eq, Ord, Num, ToHttpApiData, FromHttpApiData)
@@ -60,6 +60,7 @@ type CreateForum m =
 api :: ( MonadReader ctx r
        , Eved api m
        , EvedAuth api
+       , EvedCsrf api
        , HasAuthScheme ctx SessionData
        , HasHashidsContext ctx
        ) => r (api (Api m))
@@ -97,16 +98,15 @@ api =
 
     createForumApi =
         protected
+        .</> checkCsrfToken
         .</> reqBody [obfuscatedJSON @CreateForumRequest]
         .</> post [obfuscatedJSON @ForumResponse]
-
 
 server :: Api AppHandler
 server = listForums :<|> getForum :<|> getForumPosts :<|> createForum
   where
     listForums :: ListForums AppHandler
     listForums session (PageSize pageSize) (PageNumber page) = do
-      -- addCsrfToken =<<
         ListForums.execute (ListForums.Config
           { ListForums.configSession = session
           , ListForums.configPageSize = Just pageSize
@@ -115,13 +115,10 @@ server = listForums :<|> getForum :<|> getForumPosts :<|> createForum
 
     getForum :: GetForum AppHandler
     getForum sessionData forumId = do
-      GetForum.execute sessionData forumId
-        >>= maybeNotFound
-        -- >>= addCsrfToken
+      GetForum.execute sessionData forumId >>= maybeNotFound
 
     getForumPosts :: ListForumPosts AppHandler
     getForumPosts session forumId (PageSize pageSize) (PageNumber page) = do
-      --addCsrfToken =<<
         ListForumPosts.execute (ListForumPosts.Config
           { ListForumPosts.configForumId = forumId
           , ListForumPosts.configSession = session
@@ -131,4 +128,4 @@ server = listForums :<|> getForum :<|> getForumPosts :<|> createForum
 
     createForum :: CreateForum AppHandler
     createForum session request =
-      CreateForum.execute session request -- >>= addCsrfToken
+      CreateForum.execute session request

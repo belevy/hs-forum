@@ -1,19 +1,26 @@
-module Web.Endpoint.User 
+{-# LANGUAGE OverloadedLists #-}
+module Web.Endpoint.User
   where
 
-import Servant
-import UnliftIO.Exception (throwIO)
+import           UnliftIO.Exception   (throwIO)
 
-import Web.AppHandler
-import Env
+import           Env
+import           Web.AppHandler
+import           Web.Errors
+import           Web.Eved
+import qualified Web.Eved.ContentType as CT
+import           Web.Eved.Server
 
-import Data.UserCredentials
-import DB.User
-    
-type Api = "users" :> ReqBody '[JSON] UserCredentials :> Post '[JSON] ()
+import           DB.User
+import           Data.UserCredentials
 
-server :: AppServer Api
-server = createUser 
+type Api m = UserCredentials -> m ()
+
+api :: (Applicative f, Eved api m) => f (api (Api m))
+api = lit "users" .</> reqBody [CT.json @UserCredentials] .</> post [CT.json @()]
+
+server :: Api AppHandler
+server = createUser
   where
     createUser :: UserCredentials -> AppHandler ()
     createUser credentials = do
@@ -21,5 +28,5 @@ server = createUser
       either handleRegistrationError (const $ pure ()) eUser
 
       where
-        handleRegistrationError UserAlreadyExists = throwIO err409{errBody="That username is taken"}
+        handleRegistrationError UserAlreadyExists = throwIO err409{errorBody="That username is taken"}
         handleRegistrationError e = throwIO err500

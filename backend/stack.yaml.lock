@@ -55,12 +55,12 @@ packages:
   original:
     hackage: lift-type-0.1.0.1
 - completed:
-    hackage: eved-0.0.2.1@sha256:3ee7989766b8bb2b662e2ddca52458e6a2330298f146ad4b34e2cae476c5e4a4,1632
+    hackage: eved-0.0.3.0@sha256:a66b73d4c8dc01e1efdeb349047f0e5e3a9f7643b621a3b86a2a8cf3664b0ffb,1632
     pantry-tree:
       size: 833
-      sha256: 7b148d1c92d0b23cc3885df9ecbf077fa19e619efb2d7159254706d988b7b61d
+      sha256: 623a53b1cdf20c457dca2883b57002f0a9d1198937d69ee60e42c622dadb782f
   original:
-    hackage: eved-0.0.2.1
+    hackage: eved-0.0.3.0
 snapshots:
 - completed:
     size: 565720

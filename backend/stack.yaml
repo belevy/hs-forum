@@ -48,7 +48,7 @@ extra-deps:
 - persistent-postgresql-2.13.0.3
 - persistent-2.13.1.1
 - lift-type-0.1.0.1
-- eved-0.0.2.1
+- eved-0.0.3.0
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

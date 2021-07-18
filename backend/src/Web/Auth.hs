@@ -1,6 +1,6 @@
 module Web.Auth (HasAuthScheme(..), protected, AuthScheme, SessionData, sessionAuth) where
 
-import           DB.Session
+import           DB.Session                       (findSession)
 import           Domain.Types.SessionData         (SessionData (..))
 import           Env
 import           Network.Wai

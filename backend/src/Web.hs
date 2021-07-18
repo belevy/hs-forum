@@ -22,24 +22,26 @@ import           Control.Monad.Reader     (MonadReader)
 import           Domain.Types.SessionData (SessionData (..))
 import           Web.Eved
 import           Web.Eved.Auth
+import           Web.Eved.Csrf
 import           Web.Eved.Obfuscate
 
 type Api m =
            Session.Api m
       :<|> Forum.Api m
-     --  :<|> User.Api
+      :<|> User.Api m
 
 api ::
     ( Eved api m
     , EvedAuth api
+    , EvedCsrf api
     , MonadReader ctx r
     , HasAuthScheme ctx SessionData
     , HasHashidsContext ctx
     ) => r (api (Api m))
-api = Session.api .<|> Forum.api -- :<|> User.api
+api = withCsrfToken .</> (Session.api .<|> Forum.api .<|> User.api)
 
 handler :: Api AppHandler
-handler = Session.server :<|> Forum.server -- :<|> User.server
+handler = Session.server :<|> Forum.server :<|> User.server
 
 newtype ServerContext = ServerContext (AuthScheme SessionData, HashidsContext)
 

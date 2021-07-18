@@ -1,4 +1,6 @@
-module DB.Session where
+module DB.Session
+    (findSession, createSession)
+    where
 
 import           Control.Monad.IO.Class   (MonadIO, liftIO)
 import           DB.Model.User
@@ -12,7 +14,7 @@ import           Web.Cookie
 findSession :: MonadIO m => Redis.Connection -> Token -> m (Maybe SessionData)
 findSession conn sessionKey = do
   eSession <- liftIO $ runRedis conn $ Redis.get sessionKey
-  pure $ either (\_ -> Nothing) (SessionData.decode =<<) eSession
+  pure $ either (const Nothing) (SessionData.decode =<<) eSession
 
 createSession :: MonadIO m => Redis.Connection -> User -> Integer -> m SetCookie
 createSession conn user expiration = liftIO $ do
